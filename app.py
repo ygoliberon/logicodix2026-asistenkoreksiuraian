@@ -13,6 +13,24 @@ from pathlib import Path
 MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+# FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
+
+# Memeriksa kutipan AI di jawaban siswa, dengan mengabaikan spasi
+# dan perbedaan huruf besar-kecil.
+def normalkan(teks):
+    return re.sub(r"\s+", " ", str(teks)).strip().casefold()
+
+
+# Menentukan warna dan label lencana berdasarkan skor.
+def lencana_skor(skor):
+    if skor >= 75:
+        return "#16a34a", "Baik"
+    if skor >= 50:
+        return "#d97706", "Cukup"
+    return "#dc2626", "Perlu dicek"
+
+# FUNGSI UNTUK MENYIAPKAN, MENYIMPAN, DAN MEMBACA DATABASE.
+
 # Menempatkan database di folder yang sama dengan file aplikasi
 DB_FILE = Path(__file__).with_name("koreksi.db")
 
@@ -119,21 +137,6 @@ def ambil_riwayat():
         }
         for row in baris
     ]
-
-# Memeriksa kutipan AI di jawaban siswa, dengan mengabaikan spasi
-# dan perbedaan huruf besar-kecil.
-def normalkan(teks):
-    return re.sub(r"\s+", " ", str(teks)).strip().casefold()
-
-
-# Menentukan warna dan label lencana berdasarkan skor.
-def lencana_skor(skor):
-    if skor >= 75:
-        return "#16a34a", "Baik"
-    if skor >= 50:
-        return "#d97706", "Cukup"
-    return "#dc2626", "Perlu dicek"
-
 
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
@@ -430,7 +433,6 @@ Data:
                         "Coba kirim ulang."
                     )
 
-
 # Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
 if st.session_state.get("hasil_penilaian"):
     hasil = st.session_state["hasil_penilaian"]
@@ -567,3 +569,4 @@ if st.session_state.get("hasil_penilaian"):
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
 st.dataframe(ambil_riwayat(), width="stretch")
+
