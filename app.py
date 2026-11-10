@@ -5,11 +5,18 @@ import re
 import requests
 import streamlit as st
 
-#Menentukan model AI yang digunakan dan alamat API OpenRouter.
+# Menentukan model AI dan alamat API OpenRouter.
 MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-#Mengatur judul/tab halaman serta menampilkan judul dan keterangan aplikasi.
+
+# Memeriksa kutipan AI di jawaban siswa, dengan mengabaikan spasi
+# dan perbedaan huruf besar-kecil.
+def normalkan(teks):
+    return re.sub(r"\s+", " ", str(teks)).strip().casefold()
+
+
+# Mengatur judul tab dan halaman aplikasi.
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
@@ -21,7 +28,8 @@ st.write(
     "Guru tetap meninjau dan menetapkan nilai akhir."
 )
 
-#Meminta guru memilih banyaknya soal yang akan dinilai. Kode lalu membuat kolom input sebanyak jumlah tersebut.
+
+# Meminta guru memilih jumlah soal.
 jumlah_soal = st.number_input(
     "Jumlah soal",
     min_value=1,
@@ -32,7 +40,8 @@ jumlah_soal = st.number_input(
 
 daftar_jawaban = []
 
-#Menampilkan kolom untuk teks soal, kunci/acuan jawaban, dan jawaban siswa. Data tiap soal dikumpulkan ke dalam daftar_jawaban
+
+# Membuat kolom input untuk setiap soal, acuan, dan jawaban siswa.
 with st.form("form_koreksi"):
     st.subheader("Masukkan soal dan jawaban")
 
@@ -43,11 +52,13 @@ with st.form("form_koreksi"):
             f"Teks soal {nomor}",
             key=f"soal_{nomor}",
         )
+
         acuan = st.text_area(
             f"Kunci jawaban atau acuan {nomor}",
             key=f"acuan_{nomor}",
             help="Isi dengan jawaban acuan atau informasi yang membantu penilaian.",
         )
+
         jawaban = st.text_area(
             f"Jawaban siswa untuk soal {nomor}",
             key=f"jawaban_{nomor}",
@@ -64,8 +75,11 @@ with st.form("form_koreksi"):
 
     kirim = st.form_submit_button("Minta saran penilaian")
 
-#Berjalan saat tombol diklik. Aplikasi memastikan semua soal, acuan, dan jawaban sudah diisi sebelum mengirimkannya ke AI.
+
+# Memeriksa kelengkapan data dan mengirimkannya ke AI setelah tombol diklik.
 if kirim:
+    st.session_state.pop("hasil_penilaian", None)
+
     ada_yang_kosong = any(
         not item["soal"].strip()
         or not item["acuan"].strip()
@@ -76,52 +90,48 @@ if kirim:
     if ada_yang_kosong:
         st.warning("Lengkapi soal, acuan, dan jawaban untuk setiap nomor.")
     else:
-        #Mengambil API key dari Codespaces secret. Key tidak ditulis langsung di app.py dan tidak ditampilkan kepada pengguna.
+        # Membaca API key dari Codespaces secret.
         api_key = os.getenv("OPENROUTER_API_KEY")
 
         if not api_key:
             st.error("API key belum terbaca. Periksa Codespaces secret.")
         else:
-            #Menjelaskan cara AI menilai: fokus pada kelogisan dan ketepatan, menerima metode lain yang benar, dan tidak mengurangi nilai hanya karena langkah rutin dilewati. Bagian ini juga meminta AI mengembalikan skor dan alasan dalam format JSON.
+            # Memberi instruksi penilaian dan format jawaban kepada AI.
             prompt = f"""
-Nilai setiap penyelesaian siswa secara menyeluruh berdasarkan kelogisan
+Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
 dan ketepatan matematisnya.
 
-Aturan penilaian:
-- Jangan mewajibkan urutan langkah yang sama dengan acuan.
-- Terima metode lain yang setara dan benar.
-- Siswa boleh melewati langkah perantara jika penyelesaian yang ditulis
-  tetap cukup jelas untuk menunjukkan penalaran yang benar.
-- Jangan mengurangi nilai hanya karena langkah rutin tidak ditulis.
-- Kurangi nilai jika ada kesalahan konsep, penalaran tidak valid,
-  perhitungan keliru, atau kesimpulan tidak didukung oleh penyelesaian.
-- Jika jawaban akhir benar tetapi ada kesalahan kecil, seperti satuan,
-  jelaskan kesalahannya dan usulkan pengurangan secara proporsional.
-  Jangan otomatis menggugurkan seluruh jawaban karena kesalahan kecil.
-- Berikan skor usulan 0 sampai 100 untuk setiap soal.
-- Sertakan alasan yang merujuk pada jawaban siswa.
-- Jika bukti penalaran tidak cukup untuk memastikan kebenarannya,
-  nyatakan bahwa guru perlu meninjau.
+Terima metode lain yang setara dan benar. Siswa boleh melewati langkah
+perantara jika penalarannya tetap jelas. Periksa seluruh jawaban sebelum
+menyatakan suatu langkah tidak ada. Jangan mengarang isi jawaban.
 
-Keluarkan JSON saja, tanpa teks tambahan dan tanpa tanda Markdown,
-dengan format:
+Untuk setiap soal, berikan:
+- skor usulan 0 sampai 100;
+- kutipan pendek yang disalin persis dari jawaban siswa sebagai bukti;
+- alasan penilaian singkat.
+
+Jika tidak menemukan kutipan yang mendukung alasan, isi "bukti" dengan
+teks kosong. Skor AI adalah saran yang harus ditinjau guru.
+
+Keluarkan JSON saja:
 {{
   "hasil": [
     {{
       "nomor": 1,
       "skor": 0,
-      "alasan": "Alasan penilaian berdasarkan jawaban siswa"
+      "bukti": "Kutipan persis dari jawaban siswa",
+      "alasan": "Alasan penilaian"
     }}
   ]
 }}
 
-Data soal, acuan, dan jawaban:
+Data:
 {json.dumps(daftar_jawaban, ensure_ascii=False)}
 """
 
             with st.spinner("Meminta saran penilaian dari AI..."):
                 try:
-                    #Mengirim semua soal dan jawaban dalam satu permintaan ke model yang dipilih. Karena itu, mengoreksi satu lembar berisi banyak soal tetap memakai satu request API.
+                    # Mengirim semua soal dan jawaban dalam satu permintaan API.
                     response = requests.post(
                         OPENROUTER_URL,
                         headers={
@@ -148,10 +158,10 @@ Data soal, acuan, dan jawaban:
                         )
                         st.code(response.text[:1000])
                     else:
-                        #Mengambil hasil AI, mengubah JSON menjadi data yang bisa dibaca Python, lalu memeriksa apakah semua nomor soal punya skor antara 0 dan 100.
+                        # Mengambil teks jawaban AI.
                         isi_ai = response.json()["choices"][0]["message"]["content"]
 
-                        #Menghapus pembungkus Markdown jika AI menambahkannya.
+                        # Menghapus pembungkus Markdown jika ditambahkan AI.
                         isi_ai = re.sub(
                             r"^```(?:json)?\s*|\s*```$",
                             "",
@@ -159,72 +169,128 @@ Data soal, acuan, dan jawaban:
                         )
 
                         data_ai = json.loads(isi_ai)
-                        hasil = data_ai["hasil"]
+                        hasil_ai = data_ai["hasil"]
 
-                        if not isinstance(hasil, list):
+                        if not isinstance(hasil_ai, list):
                             raise ValueError("Hasil AI bukan berupa daftar.")
 
-                        if len(hasil) != int(jumlah_soal):
-                            raise ValueError("Jumlah hasil AI tidak sesuai jumlah soal.")
+                        if len(hasil_ai) != int(jumlah_soal):
+                            raise ValueError("Jumlah hasil AI tidak sesuai.")
 
-                        skor_per_nomor = {}
-                        alasan_per_nomor = {}
+                        hasil_tersimpan = []
+                        nomor_ditemukan = set()
 
-                        for item in hasil:
+                        for item in hasil_ai:
                             nomor = int(item["nomor"])
                             skor = float(item["skor"])
+                            bukti = str(item.get("bukti", ""))
                             alasan = str(item["alasan"])
 
-                            if nomor in skor_per_nomor:
+                            if nomor in nomor_ditemukan:
                                 raise ValueError("AI mengulang nomor soal.")
 
                             if skor < 0 or skor > 100:
-                                raise ValueError("Skor harus berada antara 0 dan 100.")
+                                raise ValueError("Skor harus antara 0 dan 100.")
 
-                            skor_per_nomor[nomor] = skor
-                            alasan_per_nomor[nomor] = alasan
+                            jawaban_asli = daftar_jawaban[nomor - 1]["jawaban"]
+
+                            hasil_tersimpan.append(
+                                {
+                                    "nomor": nomor,
+                                    "skor_ai": skor,
+                                    "bukti": bukti,
+                                    "alasan": alasan,
+                                    "jawaban": jawaban_asli,
+                                }
+                            )
+
+                            nomor_ditemukan.add(nomor)
 
                         nomor_diharapkan = set(
                             range(1, int(jumlah_soal) + 1)
                         )
 
-                        if set(skor_per_nomor) != nomor_diharapkan:
-                            raise ValueError("Ada nomor soal yang belum dinilai.")
+                        if nomor_ditemukan != nomor_diharapkan:
+                            raise ValueError("Ada soal yang belum dinilai.")
 
-                        st.subheader("Saran penilaian AI")
-
-                        for nomor in range(1, int(jumlah_soal) + 1):
-                            skor = skor_per_nomor[nomor]
-                            kontribusi = skor / int(jumlah_soal)
-                            bobot = 100 / int(jumlah_soal)
-
-                            #Menampilkan skor serta alasan untuk tiap soal. Kode menghitung nilai akhir dengan merata-ratakan skor semua soal, sehingga setiap soal berbobot sama.
-                            st.markdown(f"**Soal {nomor}: {skor:g}/100**")
-                            st.write(alasan_per_nomor[nomor])
-                            st.caption(
-                                f"Bobot soal: {bobot:.2f}% · "
-                                f"Kontribusi ke nilai akhir: "
-                                f"{kontribusi:.2f} poin"
-                            )
-
-                        nilai_akhir = (
-                            sum(skor_per_nomor.values()) / int(jumlah_soal)
+                        st.session_state["hasil_penilaian"] = sorted(
+                            hasil_tersimpan,
+                            key=lambda item: item["nomor"],
                         )
 
-                        st.metric(
-                            "Rata-rata nilai usulan AI",
-                            f"{nilai_akhir:.2f}/100",
-                        )
-                        st.info(
-                            "Ini saran AI, bukan nilai final. "
-                            "Guru perlu meninjau dan menyetujuinya."
-                        )
-
-                #Menampilkan pesan jika koneksi gagal, respons AI tidak sesuai format, atau OpenRouter mengembalikan error.
+                # Menampilkan pesan jika koneksi atau format respons bermasalah.
                 except requests.RequestException as error:
                     st.error(f"Permintaan ke OpenRouter gagal: {error}")
+
                 except (KeyError, IndexError, TypeError, ValueError):
                     st.error(
                         "Hasil AI tidak terbaca atau jumlah skornya tidak lengkap. "
                         "Coba kirim ulang."
                     )
+
+
+# Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
+if st.session_state.get("hasil_penilaian"):
+    hasil = st.session_state["hasil_penilaian"]
+    st.subheader("Tinjau saran penilaian")
+
+    skor_final_semua = []
+    semua_disetujui = True
+
+    for item in hasil:
+        nomor = item["nomor"]
+        skor_awal = int(round(item["skor_ai"]))
+
+        st.markdown(f"### Soal {nomor}")
+        st.write(f"**Saran skor AI:** {item['skor_ai']:g}/100")
+        st.write(f"**Alasan AI:** {item['alasan']}")
+
+        bukti = item["bukti"]
+        jawaban_asli = item["jawaban"]
+
+        if bukti and normalkan(bukti) in normalkan(jawaban_asli):
+            st.success(f"Kutipan ditemukan: “{bukti}”")
+        else:
+            st.warning(
+                "Kutipan tidak ditemukan persis di jawaban siswa. "
+                "Periksa jawaban asli sebelum menyetujui nilai."
+            )
+
+            if bukti:
+                st.write(f"**Kutipan AI:** “{bukti}”")
+
+        with st.expander("Lihat jawaban asli siswa"):
+            st.text(jawaban_asli)
+
+        skor_final = st.number_input(
+            f"Nilai final guru untuk soal {nomor}",
+            min_value=0,
+            max_value=100,
+            value=skor_awal,
+            step=1,
+            key=f"nilai_guru_{nomor}",
+        )
+
+        disetujui = st.checkbox(
+            f"Saya sudah meninjau dan menyetujui soal {nomor}",
+            key=f"setuju_{nomor}",
+        )
+
+        skor_final_semua.append(float(skor_final))
+
+        if not disetujui:
+            semua_disetujui = False
+
+    nilai_akhir = sum(skor_final_semua) / len(skor_final_semua)
+
+    if semua_disetujui:
+        st.metric(
+            "Nilai akhir yang disetujui guru",
+            f"{nilai_akhir:.2f}/100",
+        )
+    else:
+        st.metric(
+            "Rata-rata sementara",
+            f"{nilai_akhir:.2f}/100",
+        )
+        st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
