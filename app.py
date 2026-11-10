@@ -1,3 +1,4 @@
+import sqlite3
 import csv
 import io
 import json
@@ -6,6 +7,7 @@ import re
 
 import requests
 import streamlit as st
+from database import ambil_riwayat, siapkan_database, simpan_koreksi
 
 # Menentukan model AI dan alamat API OpenRouter.
 MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
@@ -33,11 +35,14 @@ st.set_page_config(
     layout="centered",
 )
 
+# Memastikan tabel database siap sebelum aplikasi digunakan
+siapkan_database()
+
 # Gaya tampilan: kartu, lencana skor, dan header.
 st.markdown(
     """
 <style>
-.block-container {max-width: 860px; padding-top: 2rem;}
+.block-container {max-width: 860px; padding-top: 4rem;}
 .hero {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     color: #fff; padding: 1.6rem 1.8rem; border-radius: 18px;
@@ -63,8 +68,8 @@ div[data-testid="stVerticalBlockBorderWrapper"] {border-radius:14px;}
 </style>
 <div class="hero">
   <h1>📝 Asisten Koreksi Uraian</h1>
-  <p>AI memberi saran nilai berdasarkan kelogisan penyelesaian.
-  Guru tetap meninjau dan menetapkan nilai akhir.</p>
+  <p>Asisten AI untuk membantu guru memberikan saran nilai pada ujian uraian.
+  Guru tetap perlu meninjau dan menetapkan nilai akhir.</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -83,10 +88,10 @@ with st.sidebar:
     st.divider()
     st.markdown(
         "**Cara pakai**\n"
-        "1. Isi soal, kunci, dan jawaban siswa\n"
+        "1. Silahkan isi soal yang anda ujikan, kunci jawaban/rubrik penilaian, dan jawaban siswa\n"
         "2. Klik *Minta saran penilaian*\n"
-        "3. Tinjau skor dan kutipan bukti\n"
-        "4. Setujui tiap soal untuk nilai akhir"
+        "3. Anda bisa mengecek terlebih dahulu dengan minjau skor hasil koreksi jika kurang sesuai\n"
+        "4. Jika sudah, klik setujui tiap soal untuk nilai akhir"
     )
     st.caption(f"Model: {MODEL}")
 
@@ -95,6 +100,12 @@ daftar_jawaban = []
 # Membuat kartu input untuk setiap soal, acuan, dan jawaban siswa.
 with st.form("form_koreksi"):
     st.subheader("1. Masukkan soal dan jawaban")
+
+    # Informasi yang akan disimpan bersama hasil koreksi
+    nama_guru = st.text_input("Nama guru")
+    mapel = st.text_input("Mata pelajaran")
+    nama_tugas = st.text_input("Nama tugas atau ulangan")
+    nama_siswa = st.text_input("Nama samaran atau kode siswa")
 
     for nomor in range(1, int(jumlah_soal) + 1):
         with st.container(border=True):
@@ -141,11 +152,22 @@ with st.form("form_koreksi"):
 if kirim:
     st.session_state.pop("hasil_penilaian", None)
 
-    ada_yang_kosong = any(
-        not item["soal"].strip()
-        or not item["acuan"].strip()
-        or not item["jawaban"].strip()
-        for item in daftar_jawaban
+    # Menghapus status simpan lama saat koreksi baru diminta
+    st.session_state.pop("metadata_koreksi", None)
+    st.session_state.pop("hasil_telah_disimpan", None)
+
+    # Memeriksa informasi tugas dan semua isian soal
+    ada_yang_kosong = (
+        not nama_guru.strip()
+        or not mapel.strip()
+        or not nama_tugas.strip()
+        or not nama_siswa.strip()
+        or any(
+            not item["soal"].strip()
+            or not item["acuan"].strip()
+            or not item["jawaban"].strip()
+            for item in daftar_jawaban
+        )
     )
 
     if ada_yang_kosong:
@@ -253,7 +275,9 @@ Data:
                             if skor < 0 or skor > 100:
                                 raise ValueError("Skor harus antara 0 dan 100.")
 
-                            jawaban_asli = daftar_jawaban[nomor - 1]["jawaban"]
+                            # Mengambil soal, acuan, dan jawaban siswa
+                            data_soal = daftar_jawaban[nomor - 1]
+                            jawaban_asli = data_soal["jawaban"]
 
                             hasil_tersimpan.append(
                                 {
@@ -262,6 +286,8 @@ Data:
                                     "bukti": bukti,
                                     "alasan": alasan,
                                     "jawaban": jawaban_asli,
+                                    "soal": data_soal["soal"],
+                                    "acuan": data_soal["acuan"],
                                 }
                             )
 
@@ -278,6 +304,15 @@ Data:
                             hasil_tersimpan,
                             key=lambda item: item["nomor"],
                         )
+
+                        # Menyimpan identitas tugas untuk tombol simpan
+                        st.session_state["metadata_koreksi"] = {
+                            "nama_guru": nama_guru,
+                            "mapel": mapel,
+                            "nama_tugas": nama_tugas,
+                            "nama_siswa": nama_siswa,
+                        }
+                        st.session_state["hasil_telah_disimpan"] = False
 
                 # Menampilkan pesan jika koneksi atau format respons bermasalah.
                 except requests.RequestException as error:
@@ -384,6 +419,25 @@ if st.session_state.get("hasil_penilaian"):
         st.metric("Nilai akhir yang disetujui guru", f"{nilai_akhir:.2f}/100")
         st.success("Semua soal sudah disetujui.")
 
+        # Menyimpan hasil setelah guru menyetujui semua soal
+        if not st.session_state.get("hasil_telah_disimpan", False):
+            if st.button("Simpan hasil ke database", type="primary"):
+                try:
+                    id_koreksi = simpan_koreksi(
+                        st.session_state["metadata_koreksi"],
+                        hasil,
+                        skor_final_semua,
+                        nilai_akhir,
+                    )
+                    st.session_state["hasil_telah_disimpan"] = True
+                    st.success(
+                        f"Hasil berhasil disimpan. Nomor data: {id_koreksi}"
+                    )
+                except sqlite3.Error as error:
+                    st.error(f"Gagal menyimpan ke database: {error}")
+        else:
+            st.success("Hasil ini sudah tersimpan di database.")
+
         # Unduhan rekap dalam format CSV.
         buffer = io.StringIO()
         penulis = csv.writer(buffer)
@@ -402,3 +456,8 @@ if st.session_state.get("hasil_penilaian"):
     else:
         st.metric("Rata-rata sementara", f"{nilai_akhir:.2f}/100")
         st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
+
+# Menampilkan 20 hasil terakhir dari database
+st.divider()
+st.subheader("Riwayat hasil tersimpan")
+st.dataframe(ambil_riwayat(), use_container_width=True)
