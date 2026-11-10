@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 import re
@@ -16,64 +18,123 @@ def normalkan(teks):
     return re.sub(r"\s+", " ", str(teks)).strip().casefold()
 
 
-# Mengatur judul tab dan halaman aplikasi.
+# Menentukan warna dan label lencana berdasarkan skor.
+def lencana_skor(skor):
+    if skor >= 75:
+        return "#16a34a", "Baik"
+    if skor >= 50:
+        return "#d97706", "Cukup"
+    return "#dc2626", "Perlu dicek"
+
+
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
+    layout="centered",
 )
 
-st.title("Asisten Koreksi Uraian")
-st.write(
-    "AI memberikan saran penilaian berdasarkan kelogisan penyelesaian. "
-    "Guru tetap meninjau dan menetapkan nilai akhir."
+# Gaya tampilan: kartu, lencana skor, dan header.
+st.markdown(
+    """
+<style>
+.block-container {max-width: 860px; padding-top: 2rem;}
+.hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff; padding: 1.6rem 1.8rem; border-radius: 18px;
+    margin-bottom: 1.2rem;
+}
+.hero h1 {color:#fff; margin:0; font-size:1.8rem; padding:0;}
+.hero p {color:#e0e7ff; margin:.4rem 0 0 0; font-size:.95rem;}
+.badge {
+    display:inline-block; color:#fff; font-weight:700;
+    padding:.25rem .8rem; border-radius:999px; font-size:.9rem;
+}
+.skor-besar {font-size:2.2rem; font-weight:800; line-height:1;}
+.chip-ok {background:#dcfce7; color:#166534; padding:.5rem .8rem;
+          border-radius:10px; font-size:.9rem;}
+.chip-warn {background:#fef3c7; color:#92400e; padding:.5rem .8rem;
+            border-radius:10px; font-size:.9rem;}
+.alasan {background:rgba(127,127,127,.1); padding:.7rem .9rem;
+         border-radius:10px; font-size:.92rem;}
+div[data-testid="stVerticalBlockBorderWrapper"] {border-radius:14px;}
+.stButton>button, .stFormSubmitButton>button {
+    border-radius:12px; font-weight:600; padding:.6rem 1rem;
+}
+</style>
+<div class="hero">
+  <h1>📝 Asisten Koreksi Uraian</h1>
+  <p>AI memberi saran nilai berdasarkan kelogisan penyelesaian.
+  Guru tetap meninjau dan menetapkan nilai akhir.</p>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
-
-# Meminta guru memilih jumlah soal.
-jumlah_soal = st.number_input(
-    "Jumlah soal",
-    min_value=1,
-    max_value=10,
-    value=2,
-    step=1,
-)
+# Panel samping: pengaturan dan petunjuk singkat.
+with st.sidebar:
+    st.header("Pengaturan")
+    jumlah_soal = st.number_input(
+        "Jumlah soal",
+        min_value=1,
+        max_value=10,
+        value=2,
+        step=1,
+    )
+    st.divider()
+    st.markdown(
+        "**Cara pakai**\n"
+        "1. Isi soal, kunci, dan jawaban siswa\n"
+        "2. Klik *Minta saran penilaian*\n"
+        "3. Tinjau skor dan kutipan bukti\n"
+        "4. Setujui tiap soal untuk nilai akhir"
+    )
+    st.caption(f"Model: {MODEL}")
 
 daftar_jawaban = []
 
-
-# Membuat kolom input untuk setiap soal, acuan, dan jawaban siswa.
+# Membuat kartu input untuk setiap soal, acuan, dan jawaban siswa.
 with st.form("form_koreksi"):
-    st.subheader("Masukkan soal dan jawaban")
+    st.subheader("1. Masukkan soal dan jawaban")
 
     for nomor in range(1, int(jumlah_soal) + 1):
-        st.markdown(f"### Soal {nomor}")
+        with st.container(border=True):
+            st.markdown(f"**Soal {nomor}**")
 
-        soal = st.text_area(
-            f"Teks soal {nomor}",
-            key=f"soal_{nomor}",
-        )
+            kol_soal, kol_acuan = st.columns(2)
+            with kol_soal:
+                soal = st.text_area(
+                    f"Teks soal {nomor}",
+                    key=f"soal_{nomor}",
+                    height=130,
+                )
+            with kol_acuan:
+                acuan = st.text_area(
+                    f"Kunci jawaban atau acuan {nomor}",
+                    key=f"acuan_{nomor}",
+                    height=130,
+                    help="Isi dengan jawaban acuan atau informasi yang membantu penilaian.",
+                )
 
-        acuan = st.text_area(
-            f"Kunci jawaban atau acuan {nomor}",
-            key=f"acuan_{nomor}",
-            help="Isi dengan jawaban acuan atau informasi yang membantu penilaian.",
-        )
+            jawaban = st.text_area(
+                f"Jawaban siswa untuk soal {nomor}",
+                key=f"jawaban_{nomor}",
+                height=160,
+            )
 
-        jawaban = st.text_area(
-            f"Jawaban siswa untuk soal {nomor}",
-            key=f"jawaban_{nomor}",
-        )
+            daftar_jawaban.append(
+                {
+                    "nomor": nomor,
+                    "soal": soal,
+                    "acuan": acuan,
+                    "jawaban": jawaban,
+                }
+            )
 
-        daftar_jawaban.append(
-            {
-                "nomor": nomor,
-                "soal": soal,
-                "acuan": acuan,
-                "jawaban": jawaban,
-            }
-        )
-
-    kirim = st.form_submit_button("Minta saran penilaian")
+    kirim = st.form_submit_button(
+        "✨ Minta saran penilaian",
+        type="primary",
+        use_container_width=True,
+    )
 
 
 # Memeriksa kelengkapan data dan mengirimkannya ke AI setelah tombol diklik.
@@ -232,65 +293,112 @@ Data:
 # Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
 if st.session_state.get("hasil_penilaian"):
     hasil = st.session_state["hasil_penilaian"]
-    st.subheader("Tinjau saran penilaian")
+    st.divider()
+    st.subheader("2. Tinjau saran penilaian")
 
     skor_final_semua = []
-    semua_disetujui = True
+    status_setuju = []
 
     for item in hasil:
         nomor = item["nomor"]
         skor_awal = int(round(item["skor_ai"]))
+        warna, label = lencana_skor(item["skor_ai"])
 
-        st.markdown(f"### Soal {nomor}")
-        st.write(f"**Saran skor AI:** {item['skor_ai']:g}/100")
-        st.write(f"**Alasan AI:** {item['alasan']}")
+        with st.container(border=True):
+            kol_judul, kol_skor = st.columns([3, 1])
+            with kol_judul:
+                st.markdown(f"### Soal {nomor}")
+                st.markdown(
+                    f'<span class="badge" style="background:{warna}">'
+                    f"{label}</span>",
+                    unsafe_allow_html=True,
+                )
+            with kol_skor:
+                st.markdown(
+                    f'<div class="skor-besar" style="color:{warna};'
+                    f'text-align:right">{item["skor_ai"]:g}'
+                    f'<span style="font-size:1rem;opacity:.6">/100</span></div>'
+                    f'<div style="text-align:right;font-size:.8rem;'
+                    f'opacity:.7">saran AI</div>',
+                    unsafe_allow_html=True,
+                )
 
-        bukti = item["bukti"]
-        jawaban_asli = item["jawaban"]
-
-        if bukti and normalkan(bukti) in normalkan(jawaban_asli):
-            st.success(f"Kutipan ditemukan: “{bukti}”")
-        else:
-            st.warning(
-                "Kutipan tidak ditemukan persis di jawaban siswa. "
-                "Periksa jawaban asli sebelum menyetujui nilai."
+            st.markdown(
+                f'<div class="alasan"><b>Alasan AI:</b> {item["alasan"]}</div>',
+                unsafe_allow_html=True,
             )
 
-            if bukti:
-                st.write(f"**Kutipan AI:** “{bukti}”")
+            bukti = item["bukti"]
+            jawaban_asli = item["jawaban"]
 
-        with st.expander("Lihat jawaban asli siswa"):
-            st.text(jawaban_asli)
+            if bukti and normalkan(bukti) in normalkan(jawaban_asli):
+                st.markdown(
+                    f'<div class="chip-ok" style="margin-top:.6rem">'
+                    f"✅ Kutipan ditemukan: “{bukti}”</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                aneh = f" Kutipan AI: “{bukti}”" if bukti else ""
+                st.markdown(
+                    '<div class="chip-warn" style="margin-top:.6rem">'
+                    "⚠️ Kutipan tidak ditemukan persis di jawaban siswa. "
+                    f"Periksa jawaban asli sebelum menyetujui nilai.{aneh}</div>",
+                    unsafe_allow_html=True,
+                )
 
-        skor_final = st.number_input(
-            f"Nilai final guru untuk soal {nomor}",
-            min_value=0,
-            max_value=100,
-            value=skor_awal,
-            step=1,
-            key=f"nilai_guru_{nomor}",
-        )
+            with st.expander("Lihat jawaban asli siswa"):
+                st.text(jawaban_asli)
 
-        disetujui = st.checkbox(
-            f"Saya sudah meninjau dan menyetujui soal {nomor}",
-            key=f"setuju_{nomor}",
-        )
+            kol_nilai, kol_setuju = st.columns([1, 2])
+            with kol_nilai:
+                skor_final = st.number_input(
+                    "Nilai final guru",
+                    min_value=0,
+                    max_value=100,
+                    value=skor_awal,
+                    step=1,
+                    key=f"nilai_guru_{nomor}",
+                )
+            with kol_setuju:
+                st.write("")
+                st.write("")
+                disetujui = st.checkbox(
+                    "Sudah saya tinjau dan setujui",
+                    key=f"setuju_{nomor}",
+                )
 
         skor_final_semua.append(float(skor_final))
+        status_setuju.append(disetujui)
 
-        if not disetujui:
-            semua_disetujui = False
-
+    # Ringkasan nilai akhir.
     nilai_akhir = sum(skor_final_semua) / len(skor_final_semua)
+    jumlah_setuju = sum(status_setuju)
+    total = len(status_setuju)
+    semua_disetujui = jumlah_setuju == total
+
+    st.divider()
+    st.subheader("3. Nilai akhir")
+    st.progress(jumlah_setuju / total, text=f"{jumlah_setuju} dari {total} soal disetujui")
 
     if semua_disetujui:
-        st.metric(
-            "Nilai akhir yang disetujui guru",
-            f"{nilai_akhir:.2f}/100",
+        st.metric("Nilai akhir yang disetujui guru", f"{nilai_akhir:.2f}/100")
+        st.success("Semua soal sudah disetujui.")
+
+        # Unduhan rekap dalam format CSV.
+        buffer = io.StringIO()
+        penulis = csv.writer(buffer)
+        penulis.writerow(["nomor", "skor_ai", "nilai_guru"])
+        for item, nilai in zip(hasil, skor_final_semua):
+            penulis.writerow([item["nomor"], f"{item['skor_ai']:g}", f"{nilai:g}"])
+        penulis.writerow(["rata-rata", "", f"{nilai_akhir:.2f}"])
+
+        st.download_button(
+            "⬇️ Unduh rekap (CSV)",
+            data=buffer.getvalue(),
+            file_name="rekap_nilai.csv",
+            mime="text/csv",
+            use_container_width=True,
         )
     else:
-        st.metric(
-            "Rata-rata sementara",
-            f"{nilai_akhir:.2f}/100",
-        )
+        st.metric("Rata-rata sementara", f"{nilai_akhir:.2f}/100")
         st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
