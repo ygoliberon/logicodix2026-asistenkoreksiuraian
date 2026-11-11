@@ -172,31 +172,29 @@ siapkan_database()
 st.markdown(
     """
 <style>
-.block-container {max-width: 860px; padding-top: 4rem;}
-.hero {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    color: #fff; padding: 1.6rem 1.8rem; border-radius: 18px;
-    margin-bottom: 1.2rem;
-}
-.hero h1 {color:#fff; margin:0; font-size:1.8rem; padding:0;}
-.hero p {color:#e0e7ff; margin:.4rem 0 0 0; font-size:.95rem;}
-.badge {
-    display:inline-block; color:#fff; font-weight:700;
-    padding:.25rem .8rem; border-radius:999px; font-size:.9rem;
-}
-.skor-besar {font-size:2.2rem; font-weight:800; line-height:1;}
-.chip-ok {background:#dcfce7; color:#166534; padding:.5rem .8rem;
-          border-radius:10px; font-size:.9rem;}
-.chip-warn {background:#fef3c7; color:#92400e; padding:.5rem .8rem;
-            border-radius:10px; font-size:.9rem;}
-.alasan {background:rgba(127,127,127,.1); padding:.7rem .9rem;
-         border-radius:10px; font-size:.92rem;}
-div[data-testid="stVerticalBlockBorderWrapper"] {border-radius:14px;}
-.stButton>button, .stFormSubmitButton>button {
-    border-radius:12px; font-weight:600; padding:.6rem 1rem;
-}
+:root { --accent:#6256e8; --border:rgba(128,128,128,.22); }
+.block-container { max-width:980px; padding:2.2rem 1.4rem 4rem; }
+.hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4338ca 0%,#6d4ae3 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(79,70,229,.2); }
+.hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border:1px solid rgba(255,255,255,.18); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
+.hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
+.hero p { color:#ede9fe; margin:.55rem 0 0; max-width:650px; font-size:1rem; line-height:1.6; position:relative; z-index:1; }
+.hero-kicker { display:inline-block; margin-bottom:.7rem; padding:.28rem .65rem; border:1px solid rgba(255,255,255,.3); border-radius:999px; color:#f5f3ff; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.badge { display:inline-block; color:#fff; font-weight:700; padding:.3rem .8rem; border-radius:999px; font-size:.86rem; }
+.skor-besar { font-size:2.2rem; font-weight:800; line-height:1; }
+.chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border:1px solid rgba(34,197,94,.25); border-radius:12px; font-size:.92rem; }
+.chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border:1px solid rgba(245,158,11,.25); border-radius:12px; font-size:.92rem; }
+.alasan { background:rgba(127,127,127,.08); border:1px solid var(--border); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
+div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-color:var(--border); }
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { border-radius:11px; }
+[data-testid="stFileUploader"] section { border-radius:13px; }
+.stButton>button, .stFormSubmitButton>button { min-height:2.8rem; border-radius:12px; font-weight:650; padding:.6rem 1.05rem; transition:transform .15s ease, box-shadow .15s ease; }
+.stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(98,86,232,.18); }
+[data-testid="stSidebar"] { border-right:1px solid var(--border); }
+[data-testid="stAlert"] { border-radius:12px; }
+@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
 </style>
 <div class="hero">
+  <span class="hero-kicker">Asisten guru · penilaian uraian</span>
   <h1>📝 Asisten Koreksi Uraian</h1>
   <p>Asisten AI untuk membantu guru memberikan saran nilai pada ujian uraian.
   Guru tetap perlu meninjau dan menetapkan nilai akhir.</p>
@@ -277,12 +275,19 @@ with st.form("form_koreksi"):
                 resolution="720p",
             )
 
+            gambar = foto_upload if foto_upload is not None else foto_kamera
+            dua_sumber_foto = foto_upload is not None and foto_kamera is not None
+            if gambar is not None:
+                st.image(gambar, caption=f"Pratinjau foto jawaban soal {nomor}", width=420)
+
             daftar_jawaban.append(
                 {
                     "nomor": nomor,
                     "soal": soal,
                     "acuan": acuan,
                     "jawaban": jawaban,
+                    "gambar": gambar,
+                    "dua_sumber_foto": dua_sumber_foto,
                 }
             )
 
@@ -307,6 +312,11 @@ if kirim:
         or not mapel.strip()
         or not nama_tugas.strip()
         or not nama_siswa.strip()
+        or sum(
+            item["gambar"].size
+            for item in daftar_jawaban
+            if item["gambar"] is not None
+        ) > 10 * 1024 * 1024
         or any(
             not item["soal"].strip()
             or not item["acuan"].strip()
@@ -319,12 +329,19 @@ if kirim:
                 item["jawaban"].strip()
                 and item["gambar"] is not None
             )
+            or (
+                item["gambar"] is not None
+                and item["gambar"].size > 5 * 1024 * 1024
+            )
             for item in daftar_jawaban
         )
     )
 
     if ada_yang_kosong:
-        st.warning("Lengkapi soal, acuan, dan jawaban untuk setiap nomor.")
+        st.warning(
+            "Lengkapi soal dan acuan, lalu pilih tepat satu cara untuk jawaban "
+            "(ketik, unggah foto, atau ambil foto). Maksimal 5 MB per foto dan 10 MB total."
+        )
     else:
         # Membaca API key dari Codespaces secret.
         api_key = os.getenv("OPENROUTER_API_KEY")
@@ -473,6 +490,7 @@ Data:
                             skor = float(item["skor"])
                             bukti = str(item.get("bukti", ""))
                             alasan = str(item["alasan"])
+                            jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
 
                             if nomor in nomor_ditemukan:
                                 raise ValueError("AI mengulang nomor soal.")
@@ -490,7 +508,12 @@ Data:
                                     "skor_ai": skor,
                                     "bukti": bukti,
                                     "alasan": alasan,
-                                    "jawaban": jawaban_asli,
+                                    "jawaban": (
+                                        jawaban_ai
+                                        if data_soal["gambar"] is not None
+                                        else jawaban_asli
+                                    ),
+                                    "jawaban_terbaca": jawaban_ai,
                                     "sumber_foto": data_soal["gambar"] is not None,
                                     "gambar_bytes": (
                                         data_soal["gambar"].getvalue()
@@ -578,17 +601,10 @@ if st.session_state.get("hasil_penilaian"):
 
             bukti = item["bukti"]
 
-            # Jika jawaban dari foto, gunakan hasil transkripsi model vision.
-            jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
-
-            if data_soal["gambar"] is not None and not jawaban_ai:
-                raise ValueError("Model tidak memberikan teks hasil pembacaan foto.")
-
-            jawaban_asli = (
-                jawaban_ai
-                if data_soal["gambar"] is not None
-                else data_soal["jawaban"]
-            )
+            # Tampilkan teks yang diketik atau hasil baca AI dari foto.
+            jawaban_asli = item["jawaban"]
+            if item.get("sumber_foto") and not item.get("jawaban_terbaca"):
+                st.warning("AI belum menghasilkan transkripsi. Periksa jawaban pada foto.")
 
             if bukti and normalkan(bukti) in normalkan(jawaban_asli):
                 st.markdown(
@@ -612,6 +628,8 @@ if st.session_state.get("hasil_penilaian"):
             )
 
             with st.expander(judul_jawaban):
+                if item.get("sumber_foto"):
+                    st.markdown("**Teks yang dibaca AI dari foto**")
                 st.text(jawaban_asli)
 
                 if item.get("sumber_foto") and item.get("gambar_bytes"):
