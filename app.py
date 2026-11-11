@@ -641,6 +641,10 @@ if kirim:
 Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
 dan ketepatan matematisnya.
 
+JUMLAH WAJIB: Ada tepat {len(data_soal_ai)} soal pada data. Keluarkan tepat
+{len(data_soal_ai)} objek di dalam array "hasil", satu objek untuk setiap soal,
+dengan nomor soal yang sama persis. Jangan menambah atau melewatkan soal.
+
 Gunakan komponen rubrik dan bobot berikut:
 {json.dumps(rubrik_aktif, ensure_ascii=False)}
 Beri skor 0 sampai 100 untuk setiap komponen, lalu hitung skor total
@@ -773,7 +777,11 @@ Data:
                             raise ValueError("Hasil AI bukan berupa daftar.")
 
                         if len(hasil_ai) != int(jumlah_soal):
-                            raise ValueError("Jumlah hasil AI tidak sesuai.")
+                            raise ValueError(
+                                f"AI mengembalikan {len(hasil_ai)} hasil, "
+                                f"padahal {int(jumlah_soal)} soal dikirim. "
+                                "Coba ulangi; jika masih gagal, proses tiap soal secara terpisah."
+                            )
 
                         hasil_tersimpan = []
                         nomor_ditemukan = set()
