@@ -203,6 +203,38 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
     unsafe_allow_html=True,
 )
 
+# Memasang gambar latar dari folder repo jika file sudah ditambahkan.
+FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
+GAMBAR_LATAR = next(
+    (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
+     if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
+    None,
+)
+if GAMBAR_LATAR is not None:
+    tipe_gambar = mimetypes.guess_type(GAMBAR_LATAR.name)[0] or "image/jpeg"
+    gambar_base64 = base64.b64encode(GAMBAR_LATAR.read_bytes()).decode("ascii")
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background:
+                linear-gradient(rgba(12, 15, 28, .70), rgba(12, 15, 28, .78)),
+                url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
+        }}
+        [data-testid="stAppViewContainer"] {{ background: transparent; }}
+        [data-testid="stVerticalBlockBorderWrapper"] {{
+            background: rgba(15, 18, 32, .78);
+            backdrop-filter: blur(8px);
+        }}
+        [data-testid="stSidebar"] > div:first-child {{
+            background: rgba(15, 18, 32, .92);
+        }}
+        [data-testid="stHeader"] {{ background: rgba(0, 0, 0, 0); }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # Panel samping: pengaturan dan petunjuk singkat.
 with st.sidebar:
     st.header("Pengaturan")
