@@ -1,3 +1,5 @@
+import base64
+import mimetypes
 import sqlite3
 import csv
 import io
@@ -9,7 +11,8 @@ import requests
 import streamlit as st
 from pathlib import Path
 
-# Menentukan model AI dan alamat API OpenRouter.
+# Model AI dan URL OpenRouter
+MODEL_VISION = "nvidia/nemotron-3.5-super-vl:free"
 MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -138,6 +141,24 @@ def ambil_riwayat():
         for row in baris
     ]
 
+# Mengubah foto menjadi data URL agar bisa dikirim ke model vision.
+def gambar_ke_data_url(gambar):
+    tipe_gambar = gambar.type or ""
+
+    # Jika browser tidak memberi tipe MIME, tebak dari ekstensi file.
+    if tipe_gambar not in {"image/jpeg", "image/png", "image/webp"}:
+        tipe_tebakan, _ = mimetypes.guess_type(gambar.name)
+        tipe_gambar = tipe_tebakan or tipe_gambar
+
+    if tipe_gambar not in {"image/jpeg", "image/png", "image/webp"}:
+        raise ValueError("Gunakan foto berformat JPG, PNG, atau WebP.")
+
+    if gambar.size > 5 * 1024 * 1024:
+        raise ValueError("Ukuran foto maksimal 5 MB.")
+
+    data_base64 = base64.b64encode(gambar.getvalue()).decode("utf-8")
+    return f"data:{tipe_gambar};base64,{data_base64}"
+
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
@@ -241,6 +262,21 @@ with st.form("form_koreksi"):
                 height=160,
             )
 
+            # Jawaban dapat diketik atau dimasukkan melalui satu foto.
+            st.caption("Isi jawaban dengan teks atau gunakan salah satu pilihan foto.")
+
+            foto_upload = st.file_uploader(
+                f"Unggah foto jawaban soal {nomor}",
+                type=["jpg", "jpeg", "png", "webp"],
+                key=f"foto_upload_{nomor}",
+            )
+
+            foto_kamera = st.camera_input(
+                f"Atau ambil foto jawaban soal {nomor}",
+                key=f"foto_kamera_{nomor}",
+                resolution="720p",
+            )
+
             daftar_jawaban.append(
                 {
                     "nomor": nomor,
@@ -274,7 +310,15 @@ if kirim:
         or any(
             not item["soal"].strip()
             or not item["acuan"].strip()
-            or not item["jawaban"].strip()
+            or (
+                not item["jawaban"].strip()
+                and item["gambar"] is None
+            )
+            or item["dua_sumber_foto"]
+            or (
+                item["jawaban"].strip()
+                and item["gambar"] is not None
+            )
             for item in daftar_jawaban
         )
     )
@@ -288,6 +332,23 @@ if kirim:
         if not api_key:
             st.error("API key belum terbaca. Periksa Codespaces secret.")
         else:
+            # Menyiapkan data teks saja; objek file foto tidak ikut dimasukkan ke JSON.
+            ada_foto = any(item["gambar"] is not None for item in daftar_jawaban)
+
+            data_soal_ai = []
+            for item in daftar_jawaban:
+                data_soal_ai.append(
+                    {
+                        "nomor": item["nomor"],
+                        "soal": item["soal"],
+                        "acuan": item["acuan"],
+                        "jawaban": (
+                            "Jawaban ada pada foto yang dilampirkan."
+                            if item["gambar"] is not None
+                            else item["jawaban"]
+                        ),
+                    }
+                )
             # Memberi instruksi penilaian dan format jawaban kepada AI.
             prompt = f"""
 Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
@@ -312,16 +373,51 @@ Keluarkan JSON saja:
       "nomor": 1,
       "skor": 0,
       "bukti": "Kutipan persis dari jawaban siswa",
-      "alasan": "Alasan penilaian"
+      "alasan": "Alasan penilaian",
+      "jawaban_terbaca": "Salinan jawaban siswa"
     }}
   ]
 }}
 
 Data:
-{json.dumps(daftar_jawaban, ensure_ascii=False)}
+{json.dumps(data_soal_ai, ensure_ascii=False)}
 """
 
             with st.spinner("Meminta saran penilaian dari AI..."):
+
+                # Jika ada foto, gunakan model vision dan lampirkan gambarnya.
+                model_dipakai = MODEL
+                konten_pesan = prompt
+
+                if ada_foto:
+                    model_dipakai = MODEL_VISION
+                    konten_pesan = [{"type": "text", "text": prompt}]
+
+                    total_ukuran_foto = sum(
+                        item["gambar"].size
+                        for item in daftar_jawaban
+                        if item["gambar"] is not None
+                    )
+
+                    if total_ukuran_foto > 10 * 1024 * 1024:
+                        raise ValueError("Gabungan ukuran foto maksimal 10 MB per kiriman.")
+
+                    for item in daftar_jawaban:
+                        if item["gambar"] is not None:
+                            konten_pesan.append(
+                                {
+                                    "type": "text",
+                                    "text": f"Foto jawaban untuk soal {item['nomor']}.",
+                                }
+                            )
+                            konten_pesan.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": gambar_ke_data_url(item["gambar"])
+                                    },
+                                }
+                            )
                 try:
                     # Mengirim semua soal dan jawaban dalam satu permintaan API.
                     response = requests.post(
@@ -331,11 +427,11 @@ Data:
                             "Content-Type": "application/json",
                         },
                         json={
-                            "model": MODEL,
+                            "model": model_dipakai,
                             "messages": [
                                 {
                                     "role": "user",
-                                    "content": prompt,
+                                    "content": konten_pesan,
                                 }
                             ],
                             "temperature": 0.1,
@@ -395,6 +491,12 @@ Data:
                                     "bukti": bukti,
                                     "alasan": alasan,
                                     "jawaban": jawaban_asli,
+                                    "sumber_foto": data_soal["gambar"] is not None,
+                                    "gambar_bytes": (
+                                        data_soal["gambar"].getvalue()
+                                        if data_soal["gambar"] is not None
+                                        else None
+                                    ),
                                     "soal": data_soal["soal"],
                                     "acuan": data_soal["acuan"],
                                 }
@@ -427,7 +529,10 @@ Data:
                 except requests.RequestException as error:
                     st.error(f"Permintaan ke OpenRouter gagal: {error}")
 
-                except (KeyError, IndexError, TypeError, ValueError):
+                except ValueError as error:
+                    st.error(f"Permintaan tidak dapat diproses: {error}")
+
+                except (KeyError, IndexError, TypeError):
                     st.error(
                         "Hasil AI tidak terbaca atau jumlah skornya tidak lengkap. "
                         "Coba kirim ulang."
@@ -472,7 +577,18 @@ if st.session_state.get("hasil_penilaian"):
             )
 
             bukti = item["bukti"]
-            jawaban_asli = item["jawaban"]
+
+            # Jika jawaban dari foto, gunakan hasil transkripsi model vision.
+            jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
+
+            if data_soal["gambar"] is not None and not jawaban_ai:
+                raise ValueError("Model tidak memberikan teks hasil pembacaan foto.")
+
+            jawaban_asli = (
+                jawaban_ai
+                if data_soal["gambar"] is not None
+                else data_soal["jawaban"]
+            )
 
             if bukti and normalkan(bukti) in normalkan(jawaban_asli):
                 st.markdown(
@@ -489,8 +605,17 @@ if st.session_state.get("hasil_penilaian"):
                     unsafe_allow_html=True,
                 )
 
-            with st.expander("Lihat jawaban asli siswa"):
+            judul_jawaban = (
+                "Teks yang dibaca dari foto"
+                if item.get("sumber_foto")
+                else "Lihat jawaban asli siswa"
+            )
+
+            with st.expander(judul_jawaban):
                 st.text(jawaban_asli)
+
+                if item.get("sumber_foto") and item.get("gambar_bytes"):
+                    st.image(item["gambar_bytes"], caption="Foto jawaban yang dikirim")
 
             kol_nilai, kol_setuju = st.columns([1, 2])
             with kol_nilai:
@@ -505,8 +630,15 @@ if st.session_state.get("hasil_penilaian"):
             with kol_setuju:
                 st.write("")
                 st.write("")
+                
+                label_persetujuan = (
+                    "Saya sudah memeriksa teks foto dan meninjau nilai"
+                    if item.get("sumber_foto")
+                    else "Sudah saya tinjau dan setujui"
+                )
+
                 disetujui = st.checkbox(
-                    "Sudah saya tinjau dan setujui",
+                    label_persetujuan,
                     key=f"setuju_{nomor}",
                 )
 
