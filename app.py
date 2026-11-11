@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Model AI dan URL OpenRouter
 MODEL_VISION = "nvidia/nemotron-3.5-super-vl:free"
-MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
+MODEL = "openrouter/free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
@@ -641,6 +641,10 @@ if kirim:
 Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
 dan ketepatan matematisnya.
 
+JUMLAH WAJIB: Ada tepat {len(data_soal_ai)} soal pada data. Keluarkan tepat
+{len(data_soal_ai)} objek di dalam array "hasil", satu objek untuk setiap soal,
+dengan nomor soal yang sama persis. Jangan menambah atau melewatkan soal.
+
 Gunakan komponen rubrik dan bobot berikut:
 {json.dumps(rubrik_aktif, ensure_ascii=False)}
 Beri skor 0 sampai 100 untuk setiap komponen, lalu hitung skor total
@@ -731,7 +735,7 @@ Data:
                             ],
                             "temperature": 0.1,
                             "max_tokens": 4096,
-                            "reasoning_effort": "none",
+                            **({"response_format": {"type": "json_object"}} if not ada_foto else {}),
                         },
                         timeout=90,
                     )
@@ -773,7 +777,11 @@ Data:
                             raise ValueError("Hasil AI bukan berupa daftar.")
 
                         if len(hasil_ai) != int(jumlah_soal):
-                            raise ValueError("Jumlah hasil AI tidak sesuai.")
+                            raise ValueError(
+                                f"AI mengembalikan {len(hasil_ai)} hasil, "
+                                f"padahal {int(jumlah_soal)} soal dikirim. "
+                                "Coba ulangi; jika masih gagal, proses tiap soal secara terpisah."
+                            )
 
                         hasil_tersimpan = []
                         nomor_ditemukan = set()
@@ -849,10 +857,12 @@ Data:
                 except ValueError as error:
                     st.error(f"Permintaan tidak dapat diproses: {error}")
 
-                except (KeyError, IndexError, TypeError):
+                except (KeyError, IndexError, TypeError) as error:
                     st.error(
-                        "Hasil AI tidak terbaca atau jumlah skornya tidak lengkap. "
-                        "Coba kirim ulang."
+                        "Format jawaban AI tidak lengkap "
+                        f"({type(error).__name__}: {error}). "
+                        "Biasanya model melewatkan kolom JSON atau rincian rubrik. "
+                        "Coba kirim satu soal dahulu; jika memakai foto, unggah foto lebih jelas."
                     )
 
 # Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
@@ -1163,7 +1173,7 @@ Data:
                             "messages": [{"role": "user", "content": prompt_batch}],
                             "temperature": 0.1,
                             "max_tokens": 8192,
-                            "reasoning_effort": "none",
+                            "response_format": {"type": "json_object"},
                         },
                         timeout=180,
                     )
