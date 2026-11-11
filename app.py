@@ -114,6 +114,15 @@ def buat_akun(email, password):
 
 
 # Memeriksa email dan password tanpa mengungkap mana yang salah.
+def akun_terdaftar(email):
+    with sqlite3.connect(DB_FILE) as conn:
+        row = conn.execute(
+            "SELECT 1 FROM akun WHERE email = ? COLLATE NOCASE",
+            (email.strip().casefold(),),
+        ).fetchone()
+    return row is not None
+
+
 def autentikasi(email, password):
     email = email.strip().casefold()
     with sqlite3.connect(DB_FILE) as conn:
@@ -363,7 +372,10 @@ if not akun_aktif and st.session_state.get("auth_mode"):
                     st.success("Berhasil masuk.")
                     st.rerun()
                 else:
-                    st.error("Email atau kata sandi tidak cocok.")
+                    if akun_terdaftar(email_masuk):
+                        st.error("Kata sandi salah. Coba periksa lagi.")
+                    else:
+                        st.error("Akun tidak ditemukan, buat akun terlebih dahulu.")
         else:
             with st.form("form_daftar_akun"):
                 email_baru = st.text_input("Email", key="email_baru")
