@@ -304,8 +304,8 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
     unsafe_allow_html=True,
 )
 
-# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan gambar".
-FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
+# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan_gambar".
+FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
      if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
