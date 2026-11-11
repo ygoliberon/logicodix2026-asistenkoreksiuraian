@@ -81,6 +81,7 @@ def siapkan_database():
                 skor_ai REAL NOT NULL,
                 bukti_ai TEXT,
                 alasan_ai TEXT,
+                rincian_ai TEXT,
                 skor_guru REAL NOT NULL,
                 FOREIGN KEY (koreksi_id) REFERENCES koreksi(id)
             )
@@ -90,6 +91,9 @@ def siapkan_database():
         if "user_id" not in kolom:
             conn.execute("ALTER TABLE koreksi ADD COLUMN user_id INTEGER REFERENCES akun(id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_koreksi_user_id ON koreksi(user_id)")
+        kolom_detail = {baris[1] for baris in conn.execute("PRAGMA table_info(detail_koreksi)")}
+        if "rincian_ai" not in kolom_detail:
+            conn.execute("ALTER TABLE detail_koreksi ADD COLUMN rincian_ai TEXT")
 
 
 # Hash password agar password asli tidak tersimpan di database.
@@ -169,14 +173,14 @@ def simpan_koreksi(user_id, metadata, hasil, skor_final, nilai_akhir):
                 """
                 INSERT INTO detail_koreksi (
                     koreksi_id, nomor_soal, teks_soal, acuan, jawaban,
-                    skor_ai, bukti_ai, alasan_ai, skor_guru
+                    skor_ai, bukti_ai, alasan_ai, rincian_ai, skor_guru
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     id_koreksi, item["nomor"], item["soal"], item["acuan"],
                     item["jawaban"], item["skor_ai"], item["bukti"],
-                    item["alasan"], skor,
+                    item["alasan"], json.dumps(item.get("rincian", []), ensure_ascii=False), skor,
                 ),
             )
     return id_koreksi
@@ -206,6 +210,33 @@ def ambil_riwayat(user_id):
         }
         for row in baris
     ]
+
+# Menghitung nilai tertimbang dari komponen rubrik yang dikembalikan AI.
+def hitung_skor_rubrik(rincian_ai, rubrik):
+    if not isinstance(rincian_ai, list):
+        raise ValueError("AI tidak mengembalikan rincian rubrik.")
+    aturan = {item["nama"].casefold(): item["bobot"] for item in rubrik}
+    nilai_per_kriteria = {}
+    for item in rincian_ai:
+        nama = str(item.get("kriteria", "")).strip()
+        kunci = nama.casefold()
+        if kunci not in aturan or kunci in nilai_per_kriteria:
+            raise ValueError("Nama komponen rubrik dari AI tidak sesuai.")
+        skor = float(item["skor"])
+        if not 0 <= skor <= 100:
+            raise ValueError("Nilai komponen rubrik harus 0–100.")
+        nilai_per_kriteria[kunci] = {
+            "kriteria": nama,
+            "bobot": aturan[kunci],
+            "skor": skor,
+            "alasan": str(item.get("alasan", "")),
+        }
+    if set(nilai_per_kriteria) != set(aturan):
+        raise ValueError("Rincian rubrik AI belum mencakup semua komponen.")
+    rincian = list(nilai_per_kriteria.values())
+    skor_akhir = sum(item["skor"] * item["bobot"] / 100 for item in rincian)
+    return skor_akhir, rincian
+
 
 # Mengubah foto menjadi data URL agar bisa dikirim ke model vision.
 def gambar_ke_data_url(gambar):
@@ -417,6 +448,40 @@ with st.sidebar:
         step=1,
     )
     st.divider()
+    # Fitur rubrik kustom: guru mengatur nama komponen dan bobot penilaiannya.
+    st.subheader("Rubrik berbobot")
+    st.caption("Atur komponen dan bobotnya. Jumlah bobot aktif harus 100%.")
+    nama_default = ["Pemahaman konsep", "Ketepatan isi", "Logika dan kelengkapan", "Tata bahasa dan kejelasan"]
+    bobot_default = [40, 30, 20, 10]
+    rubrik_aktif = []
+    rubrik_nama_semua = []
+    rubrik_invalid = False
+    for idx in range(4):
+        kol_nama, kol_bobot = st.columns([2, 1])
+        with kol_nama:
+            nama_kriteria = st.text_input(
+                f"Komponen {idx + 1}", value=nama_default[idx], key=f"rubrik_nama_{idx + 1}"
+            ).strip()
+        with kol_bobot:
+            bobot_kriteria = st.number_input(
+                "Bobot %", min_value=0, max_value=100, value=bobot_default[idx],
+                step=5, key=f"rubrik_bobot_{idx + 1}"
+            )
+        if bobot_kriteria > 0:
+            if not nama_kriteria:
+                rubrik_invalid = True
+            rubrik_aktif.append({"nama": nama_kriteria, "bobot": int(bobot_kriteria)})
+            rubrik_nama_semua.append(nama_kriteria.casefold())
+    total_bobot_rubrik = sum(item["bobot"] for item in rubrik_aktif)
+    rubrik_valid = (
+        bool(rubrik_aktif)
+        and total_bobot_rubrik == 100
+        and not rubrik_invalid
+        and len(rubrik_nama_semua) == len(set(rubrik_nama_semua))
+    )
+    if not rubrik_valid:
+        st.warning(f"Bobot rubrik harus berjumlah 100% dan nama komponen tidak boleh kosong atau duplikat (sekarang {total_bobot_rubrik}%).")
+    st.divider()
     st.markdown(
         "**Cara pakai**\n"
         "1. Silahkan isi soal yang anda ujikan, kunci jawaban/rubrik penilaian, dan jawaban siswa\n"
@@ -540,7 +605,9 @@ if kirim:
         )
     )
 
-    if ada_yang_kosong:
+    if not rubrik_valid:
+        st.warning("Perbaiki rubrik di Pengaturan; total bobot harus 100%.")
+    elif ada_yang_kosong:
         st.warning(
             "Lengkapi soal dan acuan, lalu pilih tepat satu cara untuk jawaban "
             "(ketik, unggah foto, atau ambil foto). Maksimal 5 MB per foto dan 10 MB total."
@@ -574,6 +641,11 @@ if kirim:
 Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
 dan ketepatan matematisnya.
 
+Gunakan komponen rubrik dan bobot berikut:
+{json.dumps(rubrik_aktif, ensure_ascii=False)}
+Beri skor 0 sampai 100 untuk setiap komponen, lalu hitung skor total
+sebagai jumlah skor komponen dikali bobotnya dibagi 100.
+
 Terima metode lain yang setara dan benar. Siswa boleh melewati langkah
 perantara jika penalarannya tetap jelas. Periksa seluruh jawaban sebelum
 menyatakan suatu langkah tidak ada. Jangan mengarang isi jawaban.
@@ -592,6 +664,9 @@ Keluarkan JSON saja:
     {{
       "nomor": 1,
       "skor": 0,
+      "rincian": [
+        {{"kriteria": "Nama komponen rubrik", "skor": 0, "alasan": "Alasan komponen"}}
+      ],
       "bukti": "Kutipan persis dari jawaban siswa",
       "alasan": "Alasan penilaian",
       "jawaban_terbaca": "Salinan jawaban siswa"
@@ -667,7 +742,13 @@ Data:
                         st.code(response.text[:1000])
                     else:
                         # Mengambil teks jawaban AI.
-                        isi_ai = response.json()["choices"][0]["message"]["content"]
+                        pesan_ai = response.json().get("choices", [{}])[0].get("message", {})
+                        isi_ai = pesan_ai.get("content")
+                        if not isinstance(isi_ai, str) or not isi_ai.strip():
+                            raise ValueError(
+                                "OpenRouter mengirim jawaban kosong. Coba kirim ulang; "
+                                "jika terjadi lagi, periksa model atau batas penggunaan API."
+                            )
 
                         # Menghapus pembungkus Markdown jika ditambahkan AI.
                         isi_ai = re.sub(
@@ -690,7 +771,7 @@ Data:
 
                         for item in hasil_ai:
                             nomor = int(item["nomor"])
-                            skor = float(item["skor"])
+                            skor, rincian_rubrik = hitung_skor_rubrik(item.get("rincian", []), rubrik_aktif)
                             bukti = str(item.get("bukti", ""))
                             alasan = str(item["alasan"])
                             jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
@@ -709,6 +790,7 @@ Data:
                                 {
                                     "nomor": nomor,
                                     "skor_ai": skor,
+                                    "rincian": rincian_rubrik,
                                     "bukti": bukti,
                                     "alasan": alasan,
                                     "jawaban": (
@@ -801,6 +883,8 @@ if st.session_state.get("hasil_penilaian"):
                 f'<div class="alasan"><b>Alasan AI:</b> {item["alasan"]}</div>',
                 unsafe_allow_html=True,
             )
+            with st.expander("Rincian skor menurut rubrik"):
+                st.dataframe(item.get("rincian", []), hide_index=True, width="stretch")
 
             bukti = item["bukti"]
 
@@ -914,9 +998,9 @@ if st.session_state.get("hasil_penilaian"):
         # Unduhan rekap dalam format CSV.
         buffer = io.StringIO()
         penulis = csv.writer(buffer)
-        penulis.writerow(["nomor", "skor_ai", "nilai_guru"])
+        penulis.writerow(["nomor", "skor_ai", "nilai_guru", "rincian_rubrik"])
         for item, nilai in zip(hasil, skor_final_semua):
-            penulis.writerow([item["nomor"], f"{item['skor_ai']:g}", f"{nilai:g}"])
+            penulis.writerow([item["nomor"], f"{item['skor_ai']:g}", f"{nilai:g}", json.dumps(item.get("rincian", []), ensure_ascii=False)])
         penulis.writerow(["rata-rata", "", f"{nilai_akhir:.2f}"])
 
         st.download_button(
@@ -969,7 +1053,7 @@ def ekspor_batch_csv():
     writer = csv.writer(output)
     writer.writerow([
         "nama_siswa", "mata_pelajaran", "tugas", "nomor_soal", "teks_soal",
-        "jawaban_siswa", "skor_ai", "nilai_guru", "bukti_ai", "alasan_ai",
+        "jawaban_siswa", "skor_ai", "nilai_guru", "rincian_rubrik", "bukti_ai", "alasan_ai",
     ])
     meta = st.session_state.get("metadata_batch", {})
     for row in st.session_state.get("hasil_batch", []):
@@ -978,7 +1062,7 @@ def ekspor_batch_csv():
         writer.writerow([
             row["nama_siswa"], meta.get("mapel", ""), meta.get("nama_tugas", ""),
             row["nomor"], row["soal"], row["jawaban"], row["skor_ai"],
-            score, row["bukti"], row["alasan"],
+            score, json.dumps(row.get("rincian", []), ensure_ascii=False), row["bukti"], row["alasan"],
         ])
     return output.getvalue()
 
@@ -1026,7 +1110,9 @@ if st.button("Proses seluruh batch", type="primary", key="proses_batch"):
     st.session_state.pop("hasil_batch", None)
     st.session_state.pop("metadata_batch", None)
     st.session_state.pop("batch_telah_disimpan", None)
-    if not guru_batch.strip() or not mapel_batch.strip() or not tugas_batch.strip():
+    if not rubrik_valid:
+        st.error("Perbaiki rubrik di panel Pengaturan; jumlah bobot harus 100%.")
+    elif not guru_batch.strip() or not mapel_batch.strip() or not tugas_batch.strip():
         st.error("Isi nama guru, mata pelajaran, dan nama tugas terlebih dahulu.")
     elif any(not q["soal"].strip() or not q["acuan"].strip() for q in soal_batch):
         st.error("Lengkapi teks soal dan acuan untuk setiap nomor.")
@@ -1038,6 +1124,10 @@ if st.button("Proses seluruh batch", type="primary", key="proses_batch"):
             batch_data = {"soal_dan_acuan": soal_batch, "siswa": students}
             prompt_batch = f"""
 Nilai jawaban uraian semua siswa dan semua nomor dengan teliti.
+Gunakan rubrik berbobot ini untuk menilai setiap jawaban:
+{json.dumps(rubrik_aktif, ensure_ascii=False)}
+Beri skor 0 sampai 100 untuk setiap komponen dan hitung skor total
+sebagai jumlah skor komponen dikali bobotnya dibagi 100.
 Terima metode lain yang benar. Jangan mengarang jawaban. Jawaban kosong
 dinilai berdasarkan isinya yang kosong. Untuk setiap pasangan siswa dan
 nomor soal berikan skor 0 sampai 100, bukti berupa kutipan persis (atau
@@ -1045,7 +1135,7 @@ teks kosong), dan alasan singkat. Kembalikan tiap pasangan tepat satu kali.
 Keluarkan JSON saja dengan struktur:
 {{
   "hasil": [
-    {{"siswa_id": 1, "nomor": 1, "skor": 0, "bukti": "", "alasan": ""}}
+    {{"siswa_id": 1, "nomor": 1, "skor": 0, "rincian": [{{"kriteria": "Nama komponen", "skor": 0, "alasan": ""}}], "bukti": "", "alasan": ""}}
   ]
 }}
 Data:
@@ -1070,7 +1160,14 @@ Data:
                     st.error(f"OpenRouter memberi respons {response.status_code}.")
                     st.code(response.text[:1000])
                 else:
-                    answer_text = response.json()["choices"][0]["message"]["content"].strip()
+                    message_batch = response.json().get("choices", [{}])[0].get("message", {})
+                    answer_text = message_batch.get("content")
+                    if not isinstance(answer_text, str) or not answer_text.strip():
+                        raise ValueError(
+                            "OpenRouter mengirim jawaban batch kosong. Coba unggah batch lebih kecil "
+                            "atau ulangi setelah beberapa saat."
+                        )
+                    answer_text = answer_text.strip()
                     lines = answer_text.splitlines()
                     fence = chr(96) * 3
                     if lines and lines[0].strip().startswith(fence):
@@ -1083,7 +1180,8 @@ Data:
                     parsed = []
                     seen = set()
                     for item in result_rows:
-                        sid, q_no, score = int(item["siswa_id"]), int(item["nomor"]), float(item["skor"])
+                        sid, q_no = int(item["siswa_id"]), int(item["nomor"])
+                        score, rubric_detail = hitung_skor_rubrik(item.get("rincian", []), rubrik_aktif)
                         if sid not in by_student or q_no not in by_question or (sid, q_no) in seen:
                             raise ValueError("Hasil AI memiliki siswa atau nomor soal yang salah/berulang.")
                         if not 0 <= score <= 100:
@@ -1097,6 +1195,7 @@ Data:
                             "acuan": question["acuan"],
                             "jawaban": student["jawaban"][q_no - 1],
                             "skor_ai": score,
+                            "rincian": rubric_detail,
                             "bukti": str(item.get("bukti", "")),
                             "alasan": str(item.get("alasan", "")),
                         })
@@ -1134,6 +1233,7 @@ if st.session_state.get("hasil_batch"):
                 with info_col:
                     st.markdown(f"**Soal {row['nomor']} · Saran AI {row['skor_ai']:g}/100**")
                     st.write(row["alasan"])
+                    st.dataframe(row.get("rincian", []), hide_index=True, width="stretch")
                     with st.expander("Lihat soal, jawaban, dan acuan"):
                         st.markdown("**Soal**")
                         st.text(row["soal"])
