@@ -225,7 +225,13 @@ if GAMBAR_LATAR is not None:
                 linear-gradient(rgba(34, 15, 57, .48), rgba(34, 15, 57, .64)),
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
-        [data-testid="stAppViewContainer"] {{ background: transparent; }}
+        .stApp,
+        [data-testid="stAppViewContainer"] {{
+            background-color: transparent;
+            filter: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }}
         div[data-testid="stVerticalBlockBorderWrapper"],
         [data-testid="stForm"] {{
             position: relative;
