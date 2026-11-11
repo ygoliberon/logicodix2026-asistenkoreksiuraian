@@ -849,10 +849,12 @@ Data:
                 except ValueError as error:
                     st.error(f"Permintaan tidak dapat diproses: {error}")
 
-                except (KeyError, IndexError, TypeError):
+                except (KeyError, IndexError, TypeError) as error:
                     st.error(
-                        "Hasil AI tidak terbaca atau jumlah skornya tidak lengkap. "
-                        "Coba kirim ulang."
+                        "Format jawaban AI tidak lengkap "
+                        f"({type(error).__name__}: {error}). "
+                        "Biasanya model melewatkan kolom JSON atau rincian rubrik. "
+                        "Coba kirim satu soal dahulu; jika memakai foto, unggah foto lebih jelas."
                     )
 
 # Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
