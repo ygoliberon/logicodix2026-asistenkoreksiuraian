@@ -2,10 +2,13 @@ import base64
 import mimetypes
 import sqlite3
 import csv
+import hashlib
+import hmac
 import io
 import json
 import os
 import re
+import secrets
 
 import requests
 import streamlit as st
@@ -43,14 +46,26 @@ def siapkan_database():
         conn.execute("PRAGMA foreign_keys = ON")
 
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS akun (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                salt TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS koreksi (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 nama_guru TEXT NOT NULL,
                 mapel TEXT NOT NULL,
                 nama_tugas TEXT NOT NULL,
                 nama_siswa TEXT NOT NULL,
                 nilai_akhir REAL NOT NULL,
-                dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                dibuat_pada TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES akun(id) ON DELETE SET NULL
             )
         """)
 
@@ -70,19 +85,64 @@ def siapkan_database():
             )
         """)
 
-# Menyimpan satu lembar koreksi beserta nilai per soalnya
-def simpan_koreksi(metadata, hasil, skor_final, nilai_akhir):
+        kolom = {baris[1] for baris in conn.execute("PRAGMA table_info(koreksi)")}
+        if "user_id" not in kolom:
+            conn.execute("ALTER TABLE koreksi ADD COLUMN user_id INTEGER REFERENCES akun(id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_koreksi_user_id ON koreksi(user_id)")
+
+
+# Hash password agar password asli tidak tersimpan di database.
+def hash_password(password, salt=None):
+    salt = salt or secrets.token_bytes(16)
+    hasil = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 310000)
+    return salt.hex(), hasil.hex()
+
+
+# Membuat akun baru menggunakan alamat email sebagai nama login.
+def buat_akun(email, password):
+    email = email.strip().casefold()
+    salt, password_hash = hash_password(password)
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.execute(
+                "INSERT INTO akun (email, salt, password_hash) VALUES (?, ?, ?)",
+                (email, salt, password_hash),
+            )
+            return {"id": cursor.lastrowid, "email": email}, None
+    except sqlite3.IntegrityError:
+        return None, "Email tersebut sudah terdaftar."
+
+
+# Memeriksa email dan password tanpa mengungkap mana yang salah.
+def autentikasi(email, password):
+    email = email.strip().casefold()
+    with sqlite3.connect(DB_FILE) as conn:
+        row = conn.execute(
+            "SELECT id, email, salt, password_hash FROM akun WHERE email = ? COLLATE NOCASE",
+            (email,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    salt = bytes.fromhex(row[2])
+    _, hasil = hash_password(password, salt)
+    if not hmac.compare_digest(hasil, row[3]):
+        return None
+    return {"id": row[0], "email": row[1]}
+
+
+# Menyimpan satu lembar koreksi di bawah akun yang sedang login.
+def simpan_koreksi(user_id, metadata, hasil, skor_final, nilai_akhir):
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
-
         cursor = conn.execute(
             """
-            INSERT INTO koreksi (
-                nama_guru, mapel, nama_tugas, nama_siswa, nilai_akhir
-            )
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO koreksi (user_id, nama_guru, mapel, nama_tugas, nama_siswa, nilai_akhir)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 metadata["nama_guru"],
                 metadata["mapel"],
                 metadata["nama_tugas"],
@@ -90,7 +150,6 @@ def simpan_koreksi(metadata, hasil, skor_final, nilai_akhir):
                 nilai_akhir,
             ),
         )
-
         id_koreksi = cursor.lastrowid
 
         for item, skor in zip(hasil, skor_final):
@@ -103,39 +162,34 @@ def simpan_koreksi(metadata, hasil, skor_final, nilai_akhir):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    id_koreksi,
-                    item["nomor"],
-                    item["soal"],
-                    item["acuan"],
-                    item["jawaban"],
-                    item["skor_ai"],
-                    item["bukti"],
-                    item["alasan"],
-                    skor,
+                    id_koreksi, item["nomor"], item["soal"], item["acuan"],
+                    item["jawaban"], item["skor_ai"], item["bukti"],
+                    item["alasan"], skor,
                 ),
             )
-
     return id_koreksi
 
-# Mengambil 20 hasil koreksi terakhir
-def ambil_riwayat():
+
+# Menampilkan hanya 20 hasil koreksi terakhir milik akun yang sedang login.
+def ambil_riwayat(user_id):
+    if user_id is None:
+        return []
     with sqlite3.connect(DB_FILE) as conn:
-        baris = conn.execute("""
-            SELECT id, nama_guru, mapel, nama_tugas, nama_siswa,
-                   nilai_akhir, dibuat_pada
+        baris = conn.execute(
+            """
+            SELECT id, nama_guru, mapel, nama_tugas, nama_siswa, nilai_akhir, dibuat_pada
             FROM koreksi
+            WHERE user_id = ?
             ORDER BY id DESC
             LIMIT 20
-        """).fetchall()
+            """,
+            (user_id,),
+        ).fetchall()
 
     return [
         {
-            "ID": row[0],
-            "Guru": row[1],
-            "Mapel": row[2],
-            "Tugas": row[3],
-            "Siswa": row[4],
-            "Nilai akhir": row[5],
+            "ID": row[0], "Guru": row[1], "Mapel": row[2],
+            "Tugas": row[3], "Siswa": row[4], "Nilai akhir": row[5],
             "Waktu disimpan": row[6],
         }
         for row in baris
@@ -268,6 +322,73 @@ if GAMBAR_LATAR is not None:
         """,
         unsafe_allow_html=True,
     )
+
+st.session_state.setdefault("auth_mode", None)
+akun_aktif = st.session_state.get("akun_aktif")
+
+kol_status, kol_masuk, kol_daftar = st.columns([6, 1, 1])
+with kol_status:
+    if akun_aktif:
+        st.caption("Akun aktif: " + akun_aktif["email"])
+    else:
+        st.caption("Mode uji coba: koreksi bisa dicoba, login diperlukan untuk menyimpan riwayat.")
+with kol_masuk:
+    if akun_aktif:
+        if st.button("Keluar", key="tombol_keluar", width="stretch"):
+            st.session_state.pop("akun_aktif", None)
+            st.session_state.pop("hasil_penilaian", None)
+            st.session_state.pop("metadata_koreksi", None)
+            st.session_state.pop("hasil_telah_disimpan", None)
+            st.rerun()
+    elif st.button("Masuk", key="tombol_masuk", width="stretch"):
+        st.session_state["auth_mode"] = "masuk"
+with kol_daftar:
+    if not akun_aktif and st.button("Buat akun", key="tombol_daftar", width="stretch"):
+        st.session_state["auth_mode"] = "daftar"
+
+if not akun_aktif and st.session_state.get("auth_mode"):
+    with st.container(border=True):
+        mode_akun = st.session_state["auth_mode"]
+        st.subheader("Masuk ke akun" if mode_akun == "masuk" else "Buat akun baru")
+        if mode_akun == "masuk":
+            with st.form("form_masuk_akun"):
+                email_masuk = st.text_input("Email", key="email_masuk")
+                sandi_masuk = st.text_input("Kata sandi", type="password", key="sandi_masuk")
+                kirim_masuk = st.form_submit_button("Masuk", type="primary")
+            if kirim_masuk:
+                akun = autentikasi(email_masuk, sandi_masuk)
+                if akun:
+                    st.session_state["akun_aktif"] = akun
+                    st.session_state["auth_mode"] = None
+                    st.success("Berhasil masuk.")
+                    st.rerun()
+                else:
+                    st.error("Email atau kata sandi tidak cocok.")
+        else:
+            with st.form("form_daftar_akun"):
+                email_baru = st.text_input("Email", key="email_baru")
+                sandi_baru = st.text_input("Kata sandi (minimal 8 karakter)", type="password", key="sandi_baru")
+                konfirmasi_sandi = st.text_input("Ulangi kata sandi", type="password", key="konfirmasi_sandi")
+                kirim_daftar = st.form_submit_button("Buat akun", type="primary")
+            if kirim_daftar:
+                if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email_baru.strip()):
+                    st.error("Masukkan alamat email yang valid.")
+                elif len(sandi_baru) < 8:
+                    st.error("Kata sandi harus minimal 8 karakter.")
+                elif sandi_baru != konfirmasi_sandi:
+                    st.error("Konfirmasi kata sandi belum sama.")
+                else:
+                    akun, pesan = buat_akun(email_baru, sandi_baru)
+                    if akun:
+                        st.session_state["akun_aktif"] = akun
+                        st.session_state["auth_mode"] = None
+                        st.success("Akun berhasil dibuat dan kamu sudah masuk.")
+                        st.rerun()
+                    else:
+                        st.error(pesan)
+        if st.button("Tutup", key="tutup_auth"):
+            st.session_state["auth_mode"] = None
+            st.rerun()
 
 # Panel samping: pengaturan dan petunjuk singkat.
 with st.sidebar:
@@ -745,9 +866,15 @@ if st.session_state.get("hasil_penilaian"):
 
         # Menyimpan hasil setelah guru menyetujui semua soal
         if not st.session_state.get("hasil_telah_disimpan", False):
-            if st.button("Simpan hasil ke database", type="primary"):
+            if not akun_aktif:
+                st.info("Mode uji coba: login atau buat akun untuk menyimpan hasil dan melihat riwayatnya.")
+                if st.button("Masuk atau buat akun untuk menyimpan", type="primary"):
+                    st.session_state["auth_mode"] = "masuk"
+                    st.rerun()
+            elif st.button("Simpan hasil ke database", type="primary"):
                 try:
                     id_koreksi = simpan_koreksi(
+                        akun_aktif["id"],
                         st.session_state["metadata_koreksi"],
                         hasil,
                         skor_final_semua,
@@ -760,7 +887,7 @@ if st.session_state.get("hasil_penilaian"):
                 except sqlite3.Error as error:
                     st.error(f"Gagal menyimpan ke database: {error}")
         else:
-            st.success("Hasil ini sudah tersimpan di database.")
+            st.success("Hasil ini sudah tersimpan di akunmu.")
 
         # Unduhan rekap dalam format CSV.
         buffer = io.StringIO()
@@ -784,5 +911,12 @@ if st.session_state.get("hasil_penilaian"):
 # Menampilkan 20 hasil terakhir dari database
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
-st.dataframe(ambil_riwayat(), width="stretch")
+if akun_aktif:
+    riwayat = ambil_riwayat(akun_aktif["id"])
+    if riwayat:
+        st.dataframe(riwayat, width="stretch")
+    else:
+        st.caption("Belum ada hasil tersimpan di akun ini.")
+else:
+    st.caption("Masuk untuk melihat riwayat hasil yang tersimpan di akunmu.")
 
