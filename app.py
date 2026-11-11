@@ -249,9 +249,9 @@ if GAMBAR_LATAR is not None:
             inset: 1px;
             z-index: -1;
             border-radius: inherit;
-            background: rgba(52, 34, 78, .30);
-            backdrop-filter: blur(16px) saturate(135%);
-            -webkit-backdrop-filter: blur(16px) saturate(135%);
+            background: rgba(52, 34, 78, .78);
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             pointer-events: none;
         }}
         [data-testid="stTextArea"] textarea,
