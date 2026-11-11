@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Model AI dan URL OpenRouter
 MODEL_VISION = "nvidia/nemotron-3.5-super-vl:free"
-MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
+MODEL = "openrouter/free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
@@ -731,7 +731,7 @@ Data:
                             ],
                             "temperature": 0.1,
                             "max_tokens": 4096,
-                            "reasoning_effort": "none",
+                            **({"response_format": {"type": "json_object"}} if not ada_foto else {}),
                         },
                         timeout=90,
                     )
@@ -1165,7 +1165,7 @@ Data:
                             "messages": [{"role": "user", "content": prompt_batch}],
                             "temperature": 0.1,
                             "max_tokens": 8192,
-                            "reasoning_effort": "none",
+                            "response_format": {"type": "json_object"},
                         },
                         timeout=180,
                     )
