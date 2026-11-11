@@ -36,6 +36,7 @@ def lencana_skor(skor):
     return "#dc2626", "Perlu dicek"
 
 # FUNGSI UNTUK MENYIAPKAN, MENYIMPAN, DAN MEMBACA DATABASE.
+# Fitur akun: membuat akun, memeriksa kata sandi, dan memisahkan data tiap pengguna.
 
 # Menempatkan database di folder yang sama dengan file aplikasi
 DB_FILE = Path(__file__).with_name("koreksi.db")
@@ -92,6 +93,7 @@ def siapkan_database():
 
 
 # Hash password agar password asli tidak tersimpan di database.
+# Keamanan akun: simpan password sebagai hash PBKDF2 dengan salt acak, bukan teks asli.
 def hash_password(password, salt=None):
     salt = salt or secrets.token_bytes(16)
     hasil = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 310000)
@@ -114,6 +116,7 @@ def buat_akun(email, password):
 
 
 # Memeriksa email dan password tanpa mengungkap mana yang salah.
+# Mengecek apakah email sudah terdaftar untuk menampilkan pesan login yang sesuai.
 def akun_terdaftar(email):
     with sqlite3.connect(DB_FILE) as conn:
         row = conn.execute(
@@ -231,7 +234,7 @@ st.set_page_config(
 # Memastikan tabel database siap sebelum aplikasi digunakan
 siapkan_database()
 
-# Gaya tampilan: kartu, lencana skor, dan header.
+# Fitur tampilan: tema ungu, kartu, lencana skor, dan header responsif.
 st.markdown(
     """
 <style>
@@ -270,7 +273,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
     unsafe_allow_html=True,
 )
 
-# Memasang gambar latar dari folder repo jika file sudah ditambahkan.
+# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan gambar".
 FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
@@ -332,6 +335,7 @@ if GAMBAR_LATAR is not None:
         unsafe_allow_html=True,
     )
 
+# Fitur login/daftar: pengguna boleh mencoba koreksi, lalu masuk untuk menyimpan hasil.
 st.session_state.setdefault("auth_mode", None)
 akun_aktif = st.session_state.get("akun_aktif")
 
@@ -836,13 +840,18 @@ if st.session_state.get("hasil_penilaian"):
 
             kol_nilai, kol_setuju = st.columns([1, 2])
             with kol_nilai:
+                # Human-in-the-loop: guru dapat merevisi saran skor AI secara manual.
                 skor_final = st.number_input(
-                    "Nilai final guru",
+                    "Revisi nilai akhir guru (0–100)",
                     min_value=0,
                     max_value=100,
                     value=skor_awal,
                     step=1,
                     key=f"nilai_guru_{nomor}",
+                )
+                st.caption(
+                    "Skor AI hanya saran. Ubah nilai ini sesuai penilaian guru; "
+                    "nilai yang disetujui inilah yang akan disimpan."
                 )
             with kol_setuju:
                 st.write("")
@@ -876,6 +885,7 @@ if st.session_state.get("hasil_penilaian"):
         st.metric("Nilai akhir yang disetujui guru", f"{nilai_akhir:.2f}/100")
         st.success("Semua soal sudah disetujui.")
 
+        # Fitur simpan: hanya akun yang sudah login dapat menyimpan hasil ke riwayat.
         # Menyimpan hasil setelah guru menyetujui semua soal
         if not st.session_state.get("hasil_telah_disimpan", False):
             if not akun_aktif:
@@ -920,7 +930,7 @@ if st.session_state.get("hasil_penilaian"):
         st.metric("Rata-rata sementara", f"{nilai_akhir:.2f}/100")
         st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
 
-# Menampilkan 20 hasil terakhir dari database
+# Fitur riwayat: tampilkan hasil milik akun yang sedang login saja.
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
 if akun_aktif:
