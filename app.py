@@ -730,6 +730,8 @@ Data:
                                 }
                             ],
                             "temperature": 0.1,
+                            "max_tokens": 4096,
+                            "reasoning_effort": "none",
                         },
                         timeout=90,
                     )
@@ -742,12 +744,19 @@ Data:
                         st.code(response.text[:1000])
                     else:
                         # Mengambil teks jawaban AI.
-                        pesan_ai = response.json().get("choices", [{}])[0].get("message", {})
+                        data_respons = response.json()
+                        pilihan_ai = data_respons.get("choices") or [{}]
+                        pilihan_ai = pilihan_ai[0] if pilihan_ai else {}
+                        pesan_ai = pilihan_ai.get("message") or {}
                         isi_ai = pesan_ai.get("content")
                         if not isinstance(isi_ai, str) or not isi_ai.strip():
+                            alasan = pilihan_ai.get("finish_reason", "tidak tersedia")
+                            token = data_respons.get("usage", {}).get("completion_tokens", "tidak tersedia")
                             raise ValueError(
-                                "OpenRouter mengirim jawaban kosong. Coba kirim ulang; "
-                                "jika terjadi lagi, periksa model atau batas penggunaan API."
+                                "OpenRouter mengembalikan jawaban kosong. "
+                                f"Model: {data_respons.get('model', model_dipakai)}; "
+                                f"finish_reason: {alasan}; token keluaran: {token}. "
+                                "Coba lagi dengan satu soal atau ganti model di OpenRouter."
                             )
 
                         # Menghapus pembungkus Markdown jika ditambahkan AI.
@@ -1153,6 +1162,8 @@ Data:
                             "model": MODEL,
                             "messages": [{"role": "user", "content": prompt_batch}],
                             "temperature": 0.1,
+                            "max_tokens": 8192,
+                            "reasoning_effort": "none",
                         },
                         timeout=180,
                     )
@@ -1160,12 +1171,18 @@ Data:
                     st.error(f"OpenRouter memberi respons {response.status_code}.")
                     st.code(response.text[:1000])
                 else:
-                    message_batch = response.json().get("choices", [{}])[0].get("message", {})
+                    data_batch = response.json()
+                    pilihan_batch = data_batch.get("choices") or [{}]
+                    pilihan_batch = pilihan_batch[0] if pilihan_batch else {}
+                    message_batch = pilihan_batch.get("message") or {}
                     answer_text = message_batch.get("content")
                     if not isinstance(answer_text, str) or not answer_text.strip():
+                        alasan = pilihan_batch.get("finish_reason", "tidak tersedia")
+                        token = data_batch.get("usage", {}).get("completion_tokens", "tidak tersedia")
                         raise ValueError(
-                            "OpenRouter mengirim jawaban batch kosong. Coba unggah batch lebih kecil "
-                            "atau ulangi setelah beberapa saat."
+                            "OpenRouter mengembalikan jawaban batch kosong. "
+                            f"Model: {data_batch.get('model', MODEL)}; finish_reason: {alasan}; "
+                            f"token keluaran: {token}. Coba proses lebih sedikit siswa sekaligus."
                         )
                     answer_text = answer_text.strip()
                     lines = answer_text.splitlines()
