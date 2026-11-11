@@ -174,7 +174,7 @@ st.markdown(
 <style>
 :root { --accent:#6256e8; --border:rgba(128,128,128,.22); }
 .block-container { max-width:980px; padding:2.2rem 1.4rem 4rem; }
-.hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4338ca 0%,#6d4ae3 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(79,70,229,.2); }
+.hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4c1d95 0%,#6d35c9 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(91,33,182,.28); }
 .hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border:1px solid rgba(255,255,255,.18); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
 .hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
 .hero p { color:#ede9fe; margin:.55rem 0 0; max-width:650px; font-size:1rem; line-height:1.6; position:relative; z-index:1; }
@@ -184,12 +184,16 @@ st.markdown(
 .chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border:1px solid rgba(34,197,94,.25); border-radius:12px; font-size:.92rem; }
 .chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border:1px solid rgba(245,158,11,.25); border-radius:12px; font-size:.92rem; }
 .alasan { background:rgba(127,127,127,.08); border:1px solid var(--border); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
-div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-color:var(--border); }
-[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { border-radius:11px; }
-[data-testid="stFileUploader"] section { border-radius:13px; }
+div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-color:rgba(202,173,245,.26); }
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,.84) !important; color:#f4f7fb !important; border:1px solid rgba(202,173,245,.36) !important; border-radius:11px; }
+[data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
+[data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
+[data-testid="stFileUploader"] section { background:rgba(48,31,76,.62); border:1px dashed rgba(202,173,245,.4); border-radius:13px; }
+[data-testid="stFileUploader"] section, [data-testid="stFileUploader"] section * { color:#f3eaff; }
+[data-testid="stCameraInput"] button { background:rgba(69,43,105,.86); color:#f4f7fb; border:1px solid rgba(202,173,245,.34); border-radius:10px; }
 .stButton>button, .stFormSubmitButton>button { min-height:2.8rem; border-radius:12px; font-weight:650; padding:.6rem 1.05rem; transition:transform .15s ease, box-shadow .15s ease; }
-.stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(98,86,232,.18); }
-[data-testid="stSidebar"] { border-right:1px solid var(--border); }
+.stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(139,92,246,.22); }
+[data-testid="stSidebar"] { border-right:1px solid rgba(202,173,245,.22); }
 [data-testid="stAlert"] { border-radius:12px; }
 @media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
 </style>
@@ -218,16 +222,16 @@ if GAMBAR_LATAR is not None:
         <style>
         .stApp {{
             background:
-                linear-gradient(rgba(12, 15, 28, .70), rgba(12, 15, 28, .78)),
+                linear-gradient(rgba(34, 15, 57, .48), rgba(34, 15, 57, .64)),
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
         [data-testid="stAppViewContainer"] {{ background: transparent; }}
         [data-testid="stVerticalBlockBorderWrapper"] {{
-            background: rgba(15, 18, 32, .78);
+            background: rgba(48, 31, 76, .80);
             backdrop-filter: blur(8px);
         }}
         [data-testid="stSidebar"] > div:first-child {{
-            background: rgba(15, 18, 32, .92);
+            background: rgba(31, 19, 49, .94);
         }}
         [data-testid="stHeader"] {{ background: rgba(0, 0, 0, 0); }}
         </style>
