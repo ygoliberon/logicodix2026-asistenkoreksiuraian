@@ -226,12 +226,27 @@ if GAMBAR_LATAR is not None:
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
         [data-testid="stAppViewContainer"] {{ background: transparent; }}
-        div[data-testid="stVerticalBlockBorderWrapper"] {{
-            background: rgba(52, 34, 78, .34) !important;
-            border: 1px solid rgba(255, 255, 255, .32) !important;
-            backdrop-filter: blur(18px) saturate(135%);
-            -webkit-backdrop-filter: blur(18px) saturate(135%);
+        div[data-testid="stVerticalBlockBorderWrapper"],
+        [data-testid="stForm"] {{
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            background: transparent !important;
+            border: 1px solid rgba(255, 255, 255, .42) !important;
+            border-radius: 16px;
             box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]::before,
+        [data-testid="stForm"]::before {{
+            content: "";
+            position: absolute;
+            inset: 1px;
+            z-index: -1;
+            border-radius: inherit;
+            background: rgba(52, 34, 78, .30);
+            backdrop-filter: blur(16px) saturate(135%);
+            -webkit-backdrop-filter: blur(16px) saturate(135%);
+            pointer-events: none;
         }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
