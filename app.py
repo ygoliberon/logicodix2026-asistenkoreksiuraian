@@ -930,6 +930,270 @@ if st.session_state.get("hasil_penilaian"):
         st.metric("Rata-rata sementara", f"{nilai_akhir:.2f}/100")
         st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
 
+
+# Fitur batch: masukkan soal sekali untuk satu kelas dan tinjau seluruh hasil dalam satu alur.
+MAX_SISWA_BATCH = 30
+
+
+def template_csv_batch(jumlah_soal):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["nama_siswa"] + [f"jawaban_{n}" for n in range(1, jumlah_soal + 1)])
+    return output.getvalue()
+
+
+def parse_csv_batch(file_csv, jumlah_soal):
+    reader = csv.DictReader(io.StringIO(file_csv.getvalue().decode("utf-8-sig")))
+    required = {"nama_siswa"} | {f"jawaban_{n}" for n in range(1, jumlah_soal + 1)}
+    missing = required - set(reader.fieldnames or [])
+    if missing:
+        raise ValueError("Kolom CSV kurang: " + ", ".join(sorted(missing)))
+    students = []
+    for row in reader:
+        name = (row.get("nama_siswa") or "").strip()
+        answers = [(row.get(f"jawaban_{n}") or "").strip() for n in range(1, jumlah_soal + 1)]
+        if not name and not any(answers):
+            continue
+        if not name:
+            raise ValueError("Ada baris jawaban tanpa nama_siswa.")
+        students.append({"siswa_id": len(students) + 1, "nama_siswa": name, "jawaban": answers})
+    if not students:
+        raise ValueError("CSV belum berisi data siswa.")
+    if len(students) > MAX_SISWA_BATCH:
+        raise ValueError(f"Maksimal {MAX_SISWA_BATCH} siswa per batch.")
+    return students
+
+
+def ekspor_batch_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "nama_siswa", "mata_pelajaran", "tugas", "nomor_soal", "teks_soal",
+        "jawaban_siswa", "skor_ai", "nilai_guru", "bukti_ai", "alasan_ai",
+    ])
+    meta = st.session_state.get("metadata_batch", {})
+    for row in st.session_state.get("hasil_batch", []):
+        key = f"nilai_batch_{row['siswa_id']}_{row['nomor']}"
+        score = st.session_state.get(key, int(round(row["skor_ai"])))
+        writer.writerow([
+            row["nama_siswa"], meta.get("mapel", ""), meta.get("nama_tugas", ""),
+            row["nomor"], row["soal"], row["jawaban"], row["skor_ai"],
+            score, row["bukti"], row["alasan"],
+        ])
+    return output.getvalue()
+
+
+st.divider()
+st.subheader("Penilaian batch satu kelas")
+st.caption(
+    "Isi soal dan acuan sekali, unggah CSV jawaban beberapa siswa, "
+    "revisi nilai, lalu unduh rekap kelas. Batch mendukung jawaban teks."
+)
+with st.expander("Format CSV dan template", expanded=False):
+    st.write(
+        "Satu baris untuk satu siswa. Kolom wajib: nama_siswa, jawaban_1, "
+        "jawaban_2, dan seterusnya sesuai jumlah soal."
+    )
+    st.download_button(
+        "Unduh template CSV batch",
+        data=template_csv_batch(int(jumlah_soal)),
+        file_name="template_batch_siswa.csv",
+        mime="text/csv",
+        key="unduh_template_batch",
+    )
+
+col_meta_1, col_meta_2 = st.columns(2)
+with col_meta_1:
+    guru_batch = st.text_input("Nama guru untuk batch", key="guru_batch")
+    mapel_batch = st.text_input("Mata pelajaran batch", key="mapel_batch")
+with col_meta_2:
+    tugas_batch = st.text_input("Nama tugas atau ulangan batch", key="tugas_batch")
+    st.caption(f"Maksimal {MAX_SISWA_BATCH} siswa per unggahan.")
+
+soal_batch = []
+for nomor in range(1, int(jumlah_soal) + 1):
+    with st.container(border=True):
+        st.markdown(f"**Soal dan acuan bersama · nomor {nomor}**")
+        col_q, col_rubric = st.columns(2)
+        with col_q:
+            q_text = st.text_area(f"Teks soal {nomor} untuk batch", key=f"batch_soal_{nomor}", height=120)
+        with col_rubric:
+            q_ref = st.text_area(f"Kunci atau rubrik {nomor} untuk batch", key=f"batch_acuan_{nomor}", height=120)
+        soal_batch.append({"nomor": nomor, "soal": q_text, "acuan": q_ref})
+
+file_batch = st.file_uploader("Unggah CSV jawaban siswa", type=["csv"], key="csv_batch")
+if st.button("Proses seluruh batch", type="primary", key="proses_batch"):
+    st.session_state.pop("hasil_batch", None)
+    st.session_state.pop("metadata_batch", None)
+    st.session_state.pop("batch_telah_disimpan", None)
+    if not guru_batch.strip() or not mapel_batch.strip() or not tugas_batch.strip():
+        st.error("Isi nama guru, mata pelajaran, dan nama tugas terlebih dahulu.")
+    elif any(not q["soal"].strip() or not q["acuan"].strip() for q in soal_batch):
+        st.error("Lengkapi teks soal dan acuan untuk setiap nomor.")
+    elif file_batch is None:
+        st.error("Unggah CSV jawaban siswa terlebih dahulu.")
+    else:
+        try:
+            students = parse_csv_batch(file_batch, int(jumlah_soal))
+            batch_data = {"soal_dan_acuan": soal_batch, "siswa": students}
+            prompt_batch = f"""
+Nilai jawaban uraian semua siswa dan semua nomor dengan teliti.
+Terima metode lain yang benar. Jangan mengarang jawaban. Jawaban kosong
+dinilai berdasarkan isinya yang kosong. Untuk setiap pasangan siswa dan
+nomor soal berikan skor 0 sampai 100, bukti berupa kutipan persis (atau
+teks kosong), dan alasan singkat. Kembalikan tiap pasangan tepat satu kali.
+Keluarkan JSON saja dengan struktur:
+{{
+  "hasil": [
+    {{"siswa_id": 1, "nomor": 1, "skor": 0, "bukti": "", "alasan": ""}}
+  ]
+}}
+Data:
+{json.dumps(batch_data, ensure_ascii=False)}
+"""
+            batch_key = os.getenv("OPENROUTER_API_KEY")
+            if not batch_key:
+                st.error("API key belum terbaca. Periksa Codespaces secret.")
+            else:
+                with st.spinner(f"Menilai {len(students)} siswa dalam satu permintaan..."):
+                    response = requests.post(
+                        OPENROUTER_URL,
+                        headers={"Authorization": f"Bearer {batch_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": MODEL,
+                            "messages": [{"role": "user", "content": prompt_batch}],
+                            "temperature": 0.1,
+                        },
+                        timeout=180,
+                    )
+                if not response.ok:
+                    st.error(f"OpenRouter memberi respons {response.status_code}.")
+                    st.code(response.text[:1000])
+                else:
+                    answer_text = response.json()["choices"][0]["message"]["content"].strip()
+                    lines = answer_text.splitlines()
+                    fence = chr(96) * 3
+                    if lines and lines[0].strip().startswith(fence):
+                        lines = lines[1:]
+                    if lines and lines[-1].strip() == fence:
+                        lines = lines[:-1]
+                    result_rows = json.loads("\n".join(lines))["hasil"]
+                    by_student = {item["siswa_id"]: item for item in students}
+                    by_question = {item["nomor"]: item for item in soal_batch}
+                    parsed = []
+                    seen = set()
+                    for item in result_rows:
+                        sid, q_no, score = int(item["siswa_id"]), int(item["nomor"]), float(item["skor"])
+                        if sid not in by_student or q_no not in by_question or (sid, q_no) in seen:
+                            raise ValueError("Hasil AI memiliki siswa atau nomor soal yang salah/berulang.")
+                        if not 0 <= score <= 100:
+                            raise ValueError("Skor harus berada antara 0 dan 100.")
+                        student, question = by_student[sid], by_question[q_no]
+                        parsed.append({
+                            "siswa_id": sid,
+                            "nama_siswa": student["nama_siswa"],
+                            "nomor": q_no,
+                            "soal": question["soal"],
+                            "acuan": question["acuan"],
+                            "jawaban": student["jawaban"][q_no - 1],
+                            "skor_ai": score,
+                            "bukti": str(item.get("bukti", "")),
+                            "alasan": str(item.get("alasan", "")),
+                        })
+                        seen.add((sid, q_no))
+                    if len(seen) != len(students) * int(jumlah_soal):
+                        raise ValueError("Ada jawaban yang belum mendapat penilaian.")
+                    st.session_state["hasil_batch"] = sorted(parsed, key=lambda x: (x["siswa_id"], x["nomor"]))
+                    st.session_state["metadata_batch"] = {
+                        "nama_guru": guru_batch.strip(),
+                        "mapel": mapel_batch.strip(),
+                        "nama_tugas": tugas_batch.strip(),
+                    }
+                    st.session_state["batch_telah_disimpan"] = False
+                    st.success(f"Batch selesai: {len(students)} siswa siap ditinjau.")
+        except requests.RequestException as error:
+            st.error(f"Permintaan batch ke OpenRouter gagal: {error}")
+        except (KeyError, IndexError, TypeError, ValueError) as error:
+            st.error(f"Batch belum dapat diproses: {error}")
+
+# Human-in-the-loop: guru merevisi skor tiap jawaban dan menyetujui hasil tiap siswa.
+if st.session_state.get("hasil_batch"):
+    batch_results = st.session_state["hasil_batch"]
+    ids = sorted({item["siswa_id"] for item in batch_results})
+    all_approved = True
+    scores_by_student = {}
+    st.subheader("Tinjau dan revisi nilai batch")
+    for sid in ids:
+        rows = [item for item in batch_results if item["siswa_id"] == sid]
+        name = rows[0]["nama_siswa"]
+        st.markdown(f"### {name}")
+        student_scores = []
+        for row in rows:
+            with st.container(border=True):
+                info_col, score_col = st.columns([3, 1])
+                with info_col:
+                    st.markdown(f"**Soal {row['nomor']} · Saran AI {row['skor_ai']:g}/100**")
+                    st.write(row["alasan"])
+                    with st.expander("Lihat soal, jawaban, dan acuan"):
+                        st.markdown("**Soal**")
+                        st.text(row["soal"])
+                        st.markdown("**Jawaban siswa**")
+                        st.text(row["jawaban"])
+                        st.markdown("**Acuan**")
+                        st.text(row["acuan"])
+                    if row["bukti"] and normalkan(row["bukti"]) in normalkan(row["jawaban"]):
+                        st.success(f"Kutipan AI ditemukan: “{row['bukti']}”")
+                    else:
+                        st.warning("Periksa bukti AI terhadap jawaban siswa.")
+                with score_col:
+                    score = st.number_input(
+                        "Revisi nilai guru",
+                        min_value=0,
+                        max_value=100,
+                        value=int(round(row["skor_ai"])),
+                        step=1,
+                        key=f"nilai_batch_{sid}_{row['nomor']}",
+                    )
+                student_scores.append(float(score))
+        approved = st.checkbox(f"Saya sudah meninjau seluruh nilai {name}", key=f"setuju_batch_{sid}")
+        all_approved = all_approved and approved
+        scores_by_student[sid] = student_scores
+
+    st.download_button(
+        "Unduh rekap batch untuk Excel/e-Rapor (CSV)",
+        data=ekspor_batch_csv(),
+        file_name="rekap_nilai_kelas.csv",
+        mime="text/csv",
+        key="unduh_rekap_batch",
+    )
+    if not st.session_state.get("batch_telah_disimpan", False):
+        if not akun_aktif:
+            st.info("Mode uji coba: login diperlukan untuk menyimpan batch ke riwayat.")
+            if st.button("Masuk atau buat akun untuk menyimpan batch", key="login_batch"):
+                st.session_state["auth_mode"] = "masuk"
+                st.rerun()
+        elif all_approved:
+            if st.button("Simpan semua hasil batch", type="primary", key="simpan_batch"):
+                try:
+                    meta = st.session_state["metadata_batch"]
+                    for sid in ids:
+                        rows = [item for item in batch_results if item["siswa_id"] == sid]
+                        student_meta = {**meta, "nama_siswa": rows[0]["nama_siswa"]}
+                        final_scores = scores_by_student[sid]
+                        final_average = sum(final_scores) / len(final_scores)
+                        simpan_koreksi(
+                            akun_aktif["id"], student_meta, rows, final_scores, final_average
+                        )
+                    st.session_state["batch_telah_disimpan"] = True
+                    st.success(f"Semua hasil untuk {len(ids)} siswa berhasil disimpan.")
+                except sqlite3.Error as error:
+                    st.error(f"Gagal menyimpan batch: {error}")
+        else:
+            st.warning("Setujui hasil setiap siswa sebelum menyimpan batch.")
+    else:
+        st.success("Hasil batch sudah tersimpan di akunmu.")
+
+
 # Fitur riwayat: tampilkan hasil milik akun yang sedang login saja.
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
