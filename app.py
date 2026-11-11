@@ -226,9 +226,18 @@ if GAMBAR_LATAR is not None:
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
         [data-testid="stAppViewContainer"] {{ background: transparent; }}
-        [data-testid="stVerticalBlockBorderWrapper"] {{
-            background: rgba(48, 31, 76, .80);
-            backdrop-filter: blur(8px);
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            background: rgba(52, 34, 78, .34) !important;
+            border: 1px solid rgba(255, 255, 255, .32) !important;
+            backdrop-filter: blur(18px) saturate(135%);
+            -webkit-backdrop-filter: blur(18px) saturate(135%);
+            box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
+        }}
+        [data-testid="stTextArea"] textarea,
+        [data-testid="stTextInput"] input,
+        [data-testid="stNumberInput"] input {{
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }}
         [data-testid="stSidebar"] > div:first-child {{
             background: rgba(31, 19, 49, .94);
