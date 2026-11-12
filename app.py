@@ -375,9 +375,14 @@ if GAMBAR_LATAR is not None:
             backdrop-filter: blur(100px) saturate(135%) !important;
             -webkit-backdrop-filter: blur(100px) saturate(135%) !important;
         }}
+        div[data-testid="stVerticalBlockBorderWrapper"] > div,
+        [data-testid="stForm"] > div {{
+            background: transparent !important;
+        }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
         [data-testid="stNumberInput"] input {{
+            background: rgba(48, 31, 76, 1) !important;
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
         }}
