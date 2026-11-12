@@ -316,7 +316,14 @@ st.markdown(
 .chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
 .chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
 .alasan { background:rgba(127,127,127,.08); border: 3px solid rgba(230, 234, 241, 0.27); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
-div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 16px; border: 3px solid rgba(230, 234, 241, 0.27) !important; }
+
+div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"] > div,
+div[data-testid="stExpander"],
+[data-testid="stForm"] {
+    border: 3px solid rgba(230, 234, 241, 0.27) !important;
+}
+
 
 div[data-testid="stVerticalBlockBorderWrapper"],
 div[data-testid="stExpander"],
