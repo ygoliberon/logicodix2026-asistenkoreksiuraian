@@ -1315,7 +1315,7 @@ if hasil_batch:
         width="stretch",
     )
 
-# Fitur riwayat: tampilkan hasil milik akun yang sedang login saja.
+# Fitur riwayat: tampilkan hasil milik akun yang sedang login saja..
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
 if akun_aktif:
