@@ -372,8 +372,8 @@ if GAMBAR_LATAR is not None:
             border: 1px solid rgba(255, 255, 255, .48) !important;
             border-radius: 16px;
             box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
-            backdrop-filter: blur(0px) saturate(135%) !important;
-            -webkit-backdrop-filter: blur(0px) saturate(135%) !important;
+            backdrop-filter: blur(100px) saturate(135%) !important;
+            -webkit-backdrop-filter: blur(100px) saturate(135%) !important;
         }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
