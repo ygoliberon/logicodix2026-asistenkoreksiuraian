@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Model AI dan URL OpenRouter
 MODEL_VISION = "nvidia/nemotron-3.5-super-vl:free"
-MODEL = "openrouter/free"
+MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
@@ -256,6 +256,41 @@ def gambar_ke_data_url(gambar):
     data_base64 = base64.b64encode(gambar.getvalue()).decode("utf-8")
     return f"data:{tipe_gambar};base64,{data_base64}"
 
+# Mengirim permintaan ke OpenRouter dan mengambil teks jawaban model.
+def minta_openrouter(api_key, model, konten):
+    response = requests.post(
+        OPENROUTER_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": konten}],
+            "temperature": 0.1,
+            "max_tokens": 4096,
+            "reasoning_effort": "none",
+        },
+        timeout=90,
+    )
+
+    if not response.ok:
+        raise ValueError(
+            f"OpenRouter memberi respons {response.status_code}: "
+            f"{response.text[:500]}"
+        )
+
+    data = response.json()
+    pilihan = data.get("choices") or []
+    if not pilihan:
+        raise ValueError("Model tidak mengembalikan jawaban.")
+
+    isi = (pilihan[0].get("message") or {}).get("content")
+    if not isinstance(isi, str) or not isi.strip():
+        raise ValueError("Model mengembalikan jawaban kosong.")
+
+    return re.sub(r"^```(?:json)?\s*|\s*```$", "", isi.strip())
+
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
@@ -304,8 +339,8 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
     unsafe_allow_html=True,
 )
 
-# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan gambar".
-FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
+# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan_gambar".
+FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
      if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
@@ -493,77 +528,102 @@ with st.sidebar:
 
 daftar_jawaban = []
 
+# Input biasa digunakan agar pilihan cara memasukkan jawaban langsung berubah.
+st.subheader("1. Masukkan soal dan jawaban")
+
+# Informasi ujian/tugas.
+nama_guru = st.text_input("Nama guru", key="nama_guru")
+mapel = st.text_input("Mata pelajaran", key="mapel")
+nama_tugas = st.text_input("Nama tugas atau ulangan", key="nama_tugas")
+nama_siswa = st.text_input("Nama samaran atau kode siswa", key="nama_siswa")
+
 # Membuat kartu input untuk setiap soal, acuan, dan jawaban siswa.
-with st.form("form_koreksi"):
-    st.subheader("1. Masukkan soal dan jawaban")
+for nomor in range(1, int(jumlah_soal) + 1):
+    with st.container(border=True):
+        st.markdown(f"**Soal {nomor}**")
 
-    # Informasi yang akan disimpan bersama hasil koreksi
-    nama_guru = st.text_input("Nama guru")
-    mapel = st.text_input("Mata pelajaran")
-    nama_tugas = st.text_input("Nama tugas atau ulangan")
-    nama_siswa = st.text_input("Nama samaran atau kode siswa")
+        kol_soal, kol_acuan = st.columns(2)
+        with kol_soal:
+            soal = st.text_area(
+                f"Teks soal {nomor}",
+                key=f"soal_{nomor}",
+                height=130,
+            )
+        with kol_acuan:
+            acuan = st.text_area(
+                f"Kunci jawaban atau acuan {nomor}",
+                key=f"acuan_{nomor}",
+                height=130,
+                help="Isi dengan jawaban acuan atau informasi yang membantu penilaian.",
+            )
 
-    for nomor in range(1, int(jumlah_soal) + 1):
-        with st.container(border=True):
-            st.markdown(f"**Soal {nomor}**")
+        # Tiga pilihan ini bersifat tunggal: hanya satu cara yang aktif.
+        mode_jawaban = st.segmented_control(
+            f"Cara memasukkan jawaban soal {nomor}",
+            options=["Teks", "Kamera", "Upload"],
+            selection_mode="single",
+            default="Teks",
+            required=True,
+            key=f"mode_jawaban_{nomor}",
+            width="stretch",
+        )
 
-            kol_soal, kol_acuan = st.columns(2)
-            with kol_soal:
-                soal = st.text_area(
-                    f"Teks soal {nomor}",
-                    key=f"soal_{nomor}",
-                    height=130,
-                )
-            with kol_acuan:
-                acuan = st.text_area(
-                    f"Kunci jawaban atau acuan {nomor}",
-                    key=f"acuan_{nomor}",
-                    height=130,
-                    help="Isi dengan jawaban acuan atau informasi yang membantu penilaian.",
-                )
+        # Tampilkan hanya isian yang sesuai dengan pilihan aktif.
+        jawaban = ""
+        foto_upload = None
+        foto_kamera = None
 
+        if mode_jawaban == "Teks":
             jawaban = st.text_area(
                 f"Jawaban siswa untuk soal {nomor}",
                 key=f"jawaban_{nomor}",
                 height=160,
             )
 
-            # Jawaban dapat diketik atau dimasukkan melalui satu foto.
-            st.caption("Isi jawaban dengan teks atau gunakan salah satu pilihan foto.")
+        elif mode_jawaban == "Kamera":
+            foto_kamera = st.camera_input(
+                f"Ambil foto jawaban soal {nomor}",
+                key=f"foto_kamera_{nomor}",
+                resolution="720p",
+            )
 
+        elif mode_jawaban == "Upload":
             foto_upload = st.file_uploader(
                 f"Unggah foto jawaban soal {nomor}",
                 type=["jpg", "jpeg", "png", "webp"],
                 key=f"foto_upload_{nomor}",
             )
 
-            foto_kamera = st.camera_input(
-                f"Atau ambil foto jawaban soal {nomor}",
-                key=f"foto_kamera_{nomor}",
-                resolution="720p",
+        # Menyatukan sumber foto agar pemeriksaan dan penilaian berikutnya tetap bekerja.
+        gambar = foto_upload if foto_upload is not None else foto_kamera
+        dua_sumber_foto = (
+            foto_upload is not None and foto_kamera is not None
+        )
+
+        if gambar is not None:
+            st.image(
+                gambar,
+                caption=f"Pratinjau foto jawaban soal {nomor}",
+                width=420,
             )
 
-            gambar = foto_upload if foto_upload is not None else foto_kamera
-            dua_sumber_foto = foto_upload is not None and foto_kamera is not None
-            if gambar is not None:
-                st.image(gambar, caption=f"Pratinjau foto jawaban soal {nomor}", width=420)
+        daftar_jawaban.append(
+            {
+                "nomor": nomor,
+                "soal": soal,
+                "acuan": acuan,
+                "jawaban": jawaban,
+                "gambar": gambar,
+                "dua_sumber_foto": dua_sumber_foto,
+            }
+        )
 
-            daftar_jawaban.append(
-                {
-                    "nomor": nomor,
-                    "soal": soal,
-                    "acuan": acuan,
-                    "jawaban": jawaban,
-                    "gambar": gambar,
-                    "dua_sumber_foto": dua_sumber_foto,
-                }
-            )
-
-    kirim = st.form_submit_button(
-        "✨ Minta saran penilaian",
-        type="primary",
-        width="stretch",
-    )
+kirim = st.button(
+    "✨ Minta saran penilaian",
+    type="primary",
+    width="stretch",
+    key="kirim_koreksi",
+)
 
 
 # Memeriksa kelengkapan data dan mengirimkannya ke AI setelah tombol diklik.
@@ -619,8 +679,135 @@ if kirim:
         if not api_key:
             st.error("API key belum terbaca. Periksa Codespaces secret.")
         else:
-            # Menyiapkan data teks saja; objek file foto tidak ikut dimasukkan ke JSON.
+            # Menyiapkan data teks saja, objek file foto tidak ikut dimasukkan ke JSON.
             ada_foto = any(item["gambar"] is not None for item in daftar_jawaban)
+
+            transkripsi_per_nomor = {}
+
+            if ada_foto:
+                try:
+                    # Permintaan pertama: foto dan instruksi OCR saja.
+                    konten_ocr = [
+                        {
+                            "type": "text",
+                            "text": (
+                                "Transkripsikan tulisan pada setiap foto secara teliti, baris demi baris. "
+                                "Pertahankan kata, satuan, tanda operasi, dan susunan jawaban siswa.\n\n"
+                                "ATURAN PEMBACAAN KARAKTER:\n"
+                                "Perhatikan bentuk visual setiap huruf, angka, variabel, dan simbol. "
+                                "Jangan mengubah karakter yang terlihat jelas. Jika suatu karakter "
+                                "memang ambigu dan bentuknya memungkinkan lebih dari satu pembacaan, "
+                                "gunakan penggunaan karakter tersebut pada bagian lain dari pekerjaan "
+                                "siswa sebagai petunjuk.\n\n"
+                                "ATURAN KHUSUS ANGKA PADA BAGIAN DIKETAHUI:\n"
+                                "Jika angka pada bagian diketahui terbaca berbeda dari angka yang "
+                                "digunakan berulang kali dalam rumus dan perhitungan selanjutnya, "
+                                "periksa apakah bentuk tulisan memungkinkan angka itu salah terbaca. "
+                                "Jika perhitungan selanjutnya konsisten secara matematis dan mendukung "
+                                "satu pembacaan yang jelas, gunakan angka yang didukung perhitungan itu "
+                                "dalam transkripsi akhir.\n\n"
+                                "Contoh: jika bagian diketahui terbaca r = 1, tetapi rumus dan "
+                                "perhitungan selanjutnya berulang kali menggunakan r = 7 secara "
+                                "konsisten, dan bentuk tulisan memungkinkan angka 7 terbaca sebagai 1, "
+                                "tulis r = 7 pada transkripsi akhir.\n\n"
+                                "Jangan menggunakan kunci jawaban atau mengubah tulisan hanya agar hasil "
+                                "akhir cocok dengan jawaban yang diharapkan. Jangan mengubah kata atau "
+                                "satuan berdasarkan dugaan. Jika perhitungan siswa sendiri tidak "
+                                "konsisten, tidak ada satu pembacaan yang lebih kuat, atau tulisan "
+                                "benar-benar tidak terbaca, jangan menebak; tandai dengan "
+                                "[tidak yakin: ...] atau [tidak terbaca]. Jangan menambahkan langkah "
+                                "yang tidak ditulis siswa.\n\n"
+                                "Jangan menilai jawaban. Keluarkan JSON saja dengan format: "
+                                '{"hasil":[{"nomor":1,"transkripsi":"teks jawaban siswa"}]}'
+                            )
+                        }
+                    ]
+
+                    for data_soal in daftar_jawaban:
+                        if data_soal["gambar"] is not None:
+                            konten_ocr.append(
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        "Foto jawaban untuk soal nomor "
+                                        f"{data_soal['nomor']}."
+                                    ),
+                                }
+                            )
+                            konten_ocr.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": gambar_ke_data_url(
+                                            data_soal["gambar"]
+                                        )
+                                    },
+                                }
+                            )
+
+                    teks_ocr = minta_openrouter(
+                        api_key,
+                        MODEL_VISION,
+                        konten_ocr,
+                    )
+
+                    # Mengambil objek JSON pertama dari respons model, meski ada teks tambahan.
+                    awal_json = teks_ocr.find("{")
+
+                    if awal_json == -1:
+                        raise ValueError("Respons OCR tidak berisi objek JSON.")
+
+                    try:
+                        data_ocr, posisi_akhir = json.JSONDecoder().raw_decode(
+                            teks_ocr[awal_json:]
+                        )
+                    except json.JSONDecodeError as error:
+                        raise ValueError(f"Format JSON OCR tidak valid: {error}") from error
+
+                    hasil_ocr = data_ocr["hasil"]
+
+                    if not isinstance(hasil_ocr, list):
+                        raise ValueError("Hasil OCR bukan berupa daftar.")
+
+                    for hasil_foto in hasil_ocr:
+                        nomor = int(hasil_foto["nomor"])
+                        transkripsi = str(
+                            hasil_foto.get("transkripsi", "")
+                        ).strip()
+
+                        if not transkripsi:
+                            raise ValueError(
+                                f"Transkripsi soal {nomor} kosong."
+                            )
+                        if nomor in transkripsi_per_nomor:
+                            raise ValueError(
+                                f"OCR mengulang nomor soal {nomor}."
+                            )
+
+                        transkripsi_per_nomor[nomor] = transkripsi
+
+                    nomor_foto = {
+                        item["nomor"]
+                        for item in daftar_jawaban
+                        if item["gambar"] is not None
+                    }
+                    if set(transkripsi_per_nomor) != nomor_foto:
+                        raise ValueError(
+                            "Hasil OCR tidak cocok dengan jumlah foto."
+                        )
+
+                except requests.RequestException as error:
+                    st.error(f"Permintaan OCR gagal: {error}")
+                    st.stop()
+                except (ValueError, KeyError, TypeError) as error:
+                    st.error(f"Hasil OCR tidak dapat diproses: {error}")
+                    st.stop()
+
+            # Menyimpan teks OCR pada data soal untuk dipakai oleh penilai.
+            for item in daftar_jawaban:
+                item["jawaban_ocr"] = transkripsi_per_nomor.get(
+                    item["nomor"], ""
+                )
 
             data_soal_ai = []
             for item in daftar_jawaban:
@@ -630,225 +817,153 @@ if kirim:
                         "soal": item["soal"],
                         "acuan": item["acuan"],
                         "jawaban": (
-                            "Jawaban ada pada foto yang dilampirkan."
+                            item["jawaban_ocr"]
                             if item["gambar"] is not None
                             else item["jawaban"]
                         ),
                     }
                 )
             # Memberi instruksi penilaian dan format jawaban kepada AI.
+            # Meminta model menilai jawaban teks hasil OCR atau teks yang diketik siswa.
             prompt = f"""
-Nilai setiap penyelesaian secara menyeluruh berdasarkan kelogisan
-dan ketepatan matematisnya.
+            Nilai setiap jawaban siswa berdasarkan kelogisan dan ketepatan matematisnya.
 
-JUMLAH WAJIB: Ada tepat {len(data_soal_ai)} soal pada data. Keluarkan tepat
-{len(data_soal_ai)} objek di dalam array "hasil", satu objek untuk setiap soal,
-dengan nomor soal yang sama persis. Jangan menambah atau melewatkan soal.
+            Gunakan komponen rubrik dan bobot berikut:
+            {json.dumps(rubrik_aktif, ensure_ascii=False)}
 
-Gunakan komponen rubrik dan bobot berikut:
-{json.dumps(rubrik_aktif, ensure_ascii=False)}
-Beri skor 0 sampai 100 untuk setiap komponen, lalu hitung skor total
-sebagai jumlah skor komponen dikali bobotnya dibagi 100.
+            Beri skor 0 sampai 100 untuk setiap komponen. Skor total dihitung sebagai
+            jumlah skor komponen dikali bobotnya dibagi 100.
 
-Terima metode lain yang setara dan benar. Siswa boleh melewati langkah
-perantara jika penalarannya tetap jelas. Periksa seluruh jawaban sebelum
-menyatakan suatu langkah tidak ada. Jangan mengarang isi jawaban.
+            Terima metode lain yang setara dan benar. Siswa boleh melewati langkah
+            perantara jika penalarannya tetap jelas.
 
-Untuk setiap soal, berikan:
-- skor usulan 0 sampai 100;
-- kutipan pendek yang disalin persis dari jawaban siswa sebagai bukti;
-- alasan penilaian singkat.
+            ATURAN PEMERIKSAAN:
+            - Nilai berdasarkan teks jawaban siswa pada bagian Data.
+            - Jika angka pada bagian diketahui berbeda dari angka yang digunakan secara
+            konsisten dalam perhitungan, dan perhitungannya konsisten secara matematis,
+            perlakukan perbedaan itu sebagai kemungkinan koreksi OCR.
+            - Dalam kondisi tersebut, jangan menyalahkan atau mengurangi nilai hanya
+            karena angka pada bagian diketahui berbeda. Nilai berdasarkan angka yang
+            didukung oleh perhitungan siswa.
+            - Jangan menggunakan kunci jawaban untuk mengubah isi transkripsi.
+            - Periksa ulang operasi hitung, pembagian, satuan, dan jawaban akhir.
+            - Jangan mengarang kutipan atau menyatakan siswa menulis angka yang tidak
+            terdapat pada teks Data.
+            - Jika teks memuat [tidak yakin: ...], tandai bagian itu agar guru memeriksa foto.
 
-Jika tidak menemukan kutipan yang mendukung alasan, isi "bukti" dengan
-teks kosong. Skor AI adalah saran yang harus ditinjau guru.
+            Untuk setiap soal, berikan skor usulan, rincian skor tiap komponen rubrik,
+            kutipan pendek yang disalin persis dari jawaban siswa sebagai bukti, dan
+            alasan penilaian. Jika tidak menemukan kutipan yang mendukung alasan, isi
+            "bukti" dengan teks kosong. Skor AI adalah saran yang harus ditinjau guru.
 
-Keluarkan JSON saja:
-{{
-  "hasil": [
-    {{
-      "nomor": 1,
-      "skor": 0,
-      "rincian": [
-        {{"kriteria": "Nama komponen rubrik", "skor": 0, "alasan": "Alasan komponen"}}
-      ],
-      "bukti": "Kutipan persis dari jawaban siswa",
-      "alasan": "Alasan penilaian",
-      "jawaban_terbaca": "Salinan jawaban siswa"
-    }}
-  ]
-}}
+            Keluarkan JSON saja dengan format:
+            {{
+            "hasil": [
+                {{
+                "nomor": 1,
+                "skor": 0,
+                "rincian": [
+                    {{
+                    "kriteria": "Nama komponen rubrik",
+                    "skor": 0,
+                    "alasan": "Alasan komponen"
+                    }}
+                ],
+                "bukti": "Kutipan persis dari jawaban siswa",
+                "alasan": "Alasan penilaian"
+                }}
+            ]
+            }}
 
-Data:
-{json.dumps(data_soal_ai, ensure_ascii=False)}
-"""
-
+            Data soal, acuan, rubrik, dan jawaban siswa:
+            {json.dumps(data_soal_ai, ensure_ascii=False)}
+            """
             with st.spinner("Meminta saran penilaian dari AI..."):
-
-                # Jika ada foto, gunakan model vision dan lampirkan gambarnya.
-                model_dipakai = MODEL
-                konten_pesan = prompt
-
-                if ada_foto:
-                    model_dipakai = MODEL_VISION
-                    konten_pesan = [{"type": "text", "text": prompt}]
-
-                    total_ukuran_foto = sum(
-                        item["gambar"].size
-                        for item in daftar_jawaban
-                        if item["gambar"] is not None
-                    )
-
-                    if total_ukuran_foto > 10 * 1024 * 1024:
-                        raise ValueError("Gabungan ukuran foto maksimal 10 MB per kiriman.")
-
-                    for item in daftar_jawaban:
-                        if item["gambar"] is not None:
-                            konten_pesan.append(
-                                {
-                                    "type": "text",
-                                    "text": f"Foto jawaban untuk soal {item['nomor']}.",
-                                }
-                            )
-                            konten_pesan.append(
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": gambar_ke_data_url(item["gambar"])
-                                    },
-                                }
-                            )
                 try:
-                    # Mengirim semua soal dan jawaban dalam satu permintaan API.
-                    response = requests.post(
-                        OPENROUTER_URL,
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": model_dipakai,
-                            "messages": [
-                                {
-                                    "role": "user",
-                                    "content": konten_pesan,
-                                }
-                            ],
-                            "temperature": 0.1,
-                            "max_tokens": 4096,
-                            **({"response_format": {"type": "json_object"}} if not ada_foto else {}),
-                        },
-                        timeout=90,
+                    # Permintaan kedua: menilai teks, tanpa mengirim foto lagi.
+                    model_dipakai = MODEL
+                    isi_ai = minta_openrouter(
+                        api_key,
+                        model_dipakai,
+                        prompt,
+                    )
+                    data_ai = json.loads(isi_ai)
+                    hasil_ai = data_ai["hasil"]
+
+                    if not isinstance(hasil_ai, list):
+                        raise ValueError("Hasil AI bukan berupa daftar.")
+
+                    if len(hasil_ai) != int(jumlah_soal):
+                        raise ValueError("Jumlah hasil AI tidak sesuai.")
+
+                    hasil_tersimpan = []
+                    nomor_ditemukan = set()
+
+                    for item in hasil_ai:
+                        nomor = int(item["nomor"])
+                        skor, rincian_rubrik = hitung_skor_rubrik(item.get("rincian", []), rubrik_aktif)
+                        bukti = str(item.get("bukti", ""))
+                        alasan = str(item["alasan"])
+                        jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
+
+                        if nomor in nomor_ditemukan:
+                            raise ValueError("AI mengulang nomor soal.")
+
+                        if skor < 0 or skor > 100:
+                            raise ValueError("Skor harus antara 0 dan 100.")
+
+                        # Mengambil soal, acuan, dan jawaban siswa
+                        data_soal = daftar_jawaban[nomor - 1]
+                        jawaban_asli = (
+                            data_soal["jawaban_ocr"]
+                            if data_soal["gambar"] is not None
+                            else data_soal["jawaban"]
+                        )
+
+                        hasil_tersimpan.append(
+                            {
+                                "nomor": nomor,
+                                "skor_ai": skor,
+                                "rincian": rincian_rubrik,
+                                "bukti": bukti,
+                                "alasan": alasan,
+                                "jawaban": jawaban_asli,
+                                "jawaban_terbaca": (
+                                    jawaban_asli if data_soal["gambar"] is not None else ""
+                                ),
+                                "sumber_foto": data_soal["gambar"] is not None,
+                                "gambar_bytes": (
+                                    data_soal["gambar"].getvalue()
+                                    if data_soal["gambar"] is not None
+                                    else None
+                                ),
+                                "soal": data_soal["soal"],
+                                "acuan": data_soal["acuan"],
+                            }
+                        )
+
+                        nomor_ditemukan.add(nomor)
+
+                    nomor_diharapkan = set(
+                        range(1, int(jumlah_soal) + 1)
                     )
 
-                    if not response.ok:
-                        st.error(
-                            f"OpenRouter memberi respons "
-                            f"{response.status_code}."
-                        )
-                        st.code(response.text[:1000])
-                    else:
-                        # Mengambil teks jawaban AI.
-                        data_respons = response.json()
-                        pilihan_ai = data_respons.get("choices") or [{}]
-                        pilihan_ai = pilihan_ai[0] if pilihan_ai else {}
-                        pesan_ai = pilihan_ai.get("message") or {}
-                        isi_ai = pesan_ai.get("content")
-                        if not isinstance(isi_ai, str) or not isi_ai.strip():
-                            alasan = pilihan_ai.get("finish_reason", "tidak tersedia")
-                            token = data_respons.get("usage", {}).get("completion_tokens", "tidak tersedia")
-                            raise ValueError(
-                                "OpenRouter mengembalikan jawaban kosong. "
-                                f"Model: {data_respons.get('model', model_dipakai)}; "
-                                f"finish_reason: {alasan}; token keluaran: {token}. "
-                                "Coba lagi dengan satu soal atau ganti model di OpenRouter."
-                            )
+                    if nomor_ditemukan != nomor_diharapkan:
+                        raise ValueError("Ada soal yang belum dinilai.")
 
-                        # Menghapus pembungkus Markdown jika ditambahkan AI.
-                        isi_ai = re.sub(
-                            r"^```(?:json)?\s*|\s*```$",
-                            "",
-                            isi_ai.strip(),
-                        )
+                    st.session_state["hasil_penilaian"] = sorted(
+                        hasil_tersimpan,
+                        key=lambda item: item["nomor"],
+                    )
 
-                        data_ai = json.loads(isi_ai)
-                        hasil_ai = data_ai["hasil"]
-
-                        if not isinstance(hasil_ai, list):
-                            raise ValueError("Hasil AI bukan berupa daftar.")
-
-                        if len(hasil_ai) != int(jumlah_soal):
-                            raise ValueError(
-                                f"AI mengembalikan {len(hasil_ai)} hasil, "
-                                f"padahal {int(jumlah_soal)} soal dikirim. "
-                                "Coba ulangi; jika masih gagal, proses tiap soal secara terpisah."
-                            )
-
-                        hasil_tersimpan = []
-                        nomor_ditemukan = set()
-
-                        for item in hasil_ai:
-                            nomor = int(item["nomor"])
-                            skor, rincian_rubrik = hitung_skor_rubrik(item.get("rincian", []), rubrik_aktif)
-                            bukti = str(item.get("bukti", ""))
-                            alasan = str(item["alasan"])
-                            jawaban_ai = str(item.get("jawaban_terbaca", "")).strip()
-
-                            if nomor in nomor_ditemukan:
-                                raise ValueError("AI mengulang nomor soal.")
-
-                            if skor < 0 or skor > 100:
-                                raise ValueError("Skor harus antara 0 dan 100.")
-
-                            # Mengambil soal, acuan, dan jawaban siswa
-                            data_soal = daftar_jawaban[nomor - 1]
-                            jawaban_asli = data_soal["jawaban"]
-
-                            hasil_tersimpan.append(
-                                {
-                                    "nomor": nomor,
-                                    "skor_ai": skor,
-                                    "rincian": rincian_rubrik,
-                                    "bukti": bukti,
-                                    "alasan": alasan,
-                                    "jawaban": (
-                                        jawaban_ai
-                                        if data_soal["gambar"] is not None
-                                        else jawaban_asli
-                                    ),
-                                    "jawaban_terbaca": jawaban_ai,
-                                    "sumber_foto": data_soal["gambar"] is not None,
-                                    "gambar_bytes": (
-                                        data_soal["gambar"].getvalue()
-                                        if data_soal["gambar"] is not None
-                                        else None
-                                    ),
-                                    "soal": data_soal["soal"],
-                                    "acuan": data_soal["acuan"],
-                                }
-                            )
-
-                            nomor_ditemukan.add(nomor)
-
-                        nomor_diharapkan = set(
-                            range(1, int(jumlah_soal) + 1)
-                        )
-
-                        if nomor_ditemukan != nomor_diharapkan:
-                            raise ValueError("Ada soal yang belum dinilai.")
-
-                        st.session_state["hasil_penilaian"] = sorted(
-                            hasil_tersimpan,
-                            key=lambda item: item["nomor"],
-                        )
-
-                        # Menyimpan identitas tugas untuk tombol simpan
-                        st.session_state["metadata_koreksi"] = {
-                            "nama_guru": nama_guru,
-                            "mapel": mapel,
-                            "nama_tugas": nama_tugas,
-                            "nama_siswa": nama_siswa,
-                        }
-                        st.session_state["hasil_telah_disimpan"] = False
+                    # Menyimpan identitas tugas untuk tombol simpan
+                    st.session_state["metadata_koreksi"] = {
+                        "nama_guru": nama_guru,
+                        "mapel": mapel,
+                        "nama_tugas": nama_tugas,
+                        "nama_siswa": nama_siswa,
+                    }
+                    st.session_state["hasil_telah_disimpan"] = False
 
                 # Menampilkan pesan jika koneksi atau format respons bermasalah.
                 except requests.RequestException as error:
@@ -857,12 +972,10 @@ Data:
                 except ValueError as error:
                     st.error(f"Permintaan tidak dapat diproses: {error}")
 
-                except (KeyError, IndexError, TypeError) as error:
+                except (KeyError, IndexError, TypeError):
                     st.error(
-                        "Format jawaban AI tidak lengkap "
-                        f"({type(error).__name__}: {error}). "
-                        "Biasanya model melewatkan kolom JSON atau rincian rubrik. "
-                        "Coba kirim satu soal dahulu; jika memakai foto, unggah foto lebih jelas."
+                        "Hasil AI tidak terbaca atau jumlah skornya tidak lengkap. "
+                        "Coba kirim ulang."
                     )
 
 # Menampilkan hasil agar guru bisa memeriksa dan menyetujui nilai.
@@ -1032,294 +1145,6 @@ if st.session_state.get("hasil_penilaian"):
     else:
         st.metric("Rata-rata sementara", f"{nilai_akhir:.2f}/100")
         st.warning("Setujui nilai setiap soal untuk menetapkan nilai akhir.")
-
-
-# Fitur batch: masukkan soal sekali untuk satu kelas dan tinjau seluruh hasil dalam satu alur.
-MAX_SISWA_BATCH = 30
-
-
-def template_csv_batch(jumlah_soal):
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["nama_siswa"] + [f"jawaban_{n}" for n in range(1, jumlah_soal + 1)])
-    return output.getvalue()
-
-
-def parse_csv_batch(file_csv, jumlah_soal):
-    reader = csv.DictReader(io.StringIO(file_csv.getvalue().decode("utf-8-sig")))
-    required = {"nama_siswa"} | {f"jawaban_{n}" for n in range(1, jumlah_soal + 1)}
-    missing = required - set(reader.fieldnames or [])
-    if missing:
-        raise ValueError("Kolom CSV kurang: " + ", ".join(sorted(missing)))
-    students = []
-    for row in reader:
-        name = (row.get("nama_siswa") or "").strip()
-        answers = [(row.get(f"jawaban_{n}") or "").strip() for n in range(1, jumlah_soal + 1)]
-        if not name and not any(answers):
-            continue
-        if not name:
-            raise ValueError("Ada baris jawaban tanpa nama_siswa.")
-        students.append({"siswa_id": len(students) + 1, "nama_siswa": name, "jawaban": answers})
-    if not students:
-        raise ValueError("CSV belum berisi data siswa.")
-    if len(students) > MAX_SISWA_BATCH:
-        raise ValueError(f"Maksimal {MAX_SISWA_BATCH} siswa per batch.")
-    return students
-
-
-def ekspor_batch_csv():
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "nama_siswa", "mata_pelajaran", "tugas", "nomor_soal", "teks_soal",
-        "jawaban_siswa", "skor_ai", "nilai_guru", "rincian_rubrik", "bukti_ai", "alasan_ai",
-    ])
-    meta = st.session_state.get("metadata_batch", {})
-    for row in st.session_state.get("hasil_batch", []):
-        key = f"nilai_batch_{row['siswa_id']}_{row['nomor']}"
-        score = st.session_state.get(key, int(round(row["skor_ai"])))
-        writer.writerow([
-            row["nama_siswa"], meta.get("mapel", ""), meta.get("nama_tugas", ""),
-            row["nomor"], row["soal"], row["jawaban"], row["skor_ai"],
-            score, json.dumps(row.get("rincian", []), ensure_ascii=False), row["bukti"], row["alasan"],
-        ])
-    return output.getvalue()
-
-
-st.divider()
-st.subheader("Penilaian batch satu kelas")
-st.caption(
-    "Isi soal dan acuan sekali, unggah CSV jawaban beberapa siswa, "
-    "revisi nilai, lalu unduh rekap kelas. Batch mendukung jawaban teks."
-)
-with st.expander("Format CSV dan template", expanded=False):
-    st.write(
-        "Satu baris untuk satu siswa. Kolom wajib: nama_siswa, jawaban_1, "
-        "jawaban_2, dan seterusnya sesuai jumlah soal."
-    )
-    st.download_button(
-        "Unduh template CSV batch",
-        data=template_csv_batch(int(jumlah_soal)),
-        file_name="template_batch_siswa.csv",
-        mime="text/csv",
-        key="unduh_template_batch",
-    )
-
-col_meta_1, col_meta_2 = st.columns(2)
-with col_meta_1:
-    guru_batch = st.text_input("Nama guru untuk batch", key="guru_batch")
-    mapel_batch = st.text_input("Mata pelajaran batch", key="mapel_batch")
-with col_meta_2:
-    tugas_batch = st.text_input("Nama tugas atau ulangan batch", key="tugas_batch")
-    st.caption(f"Maksimal {MAX_SISWA_BATCH} siswa per unggahan.")
-
-soal_batch = []
-for nomor in range(1, int(jumlah_soal) + 1):
-    with st.container(border=True):
-        st.markdown(f"**Soal dan acuan bersama · nomor {nomor}**")
-        col_q, col_rubric = st.columns(2)
-        with col_q:
-            q_text = st.text_area(f"Teks soal {nomor} untuk batch", key=f"batch_soal_{nomor}", height=120)
-        with col_rubric:
-            q_ref = st.text_area(f"Kunci atau rubrik {nomor} untuk batch", key=f"batch_acuan_{nomor}", height=120)
-        soal_batch.append({"nomor": nomor, "soal": q_text, "acuan": q_ref})
-
-file_batch = st.file_uploader("Unggah CSV jawaban siswa", type=["csv"], key="csv_batch")
-if st.button("Proses seluruh batch", type="primary", key="proses_batch"):
-    st.session_state.pop("hasil_batch", None)
-    st.session_state.pop("metadata_batch", None)
-    st.session_state.pop("batch_telah_disimpan", None)
-    if not rubrik_valid:
-        st.error("Perbaiki rubrik di panel Pengaturan; jumlah bobot harus 100%.")
-    elif not guru_batch.strip() or not mapel_batch.strip() or not tugas_batch.strip():
-        st.error("Isi nama guru, mata pelajaran, dan nama tugas terlebih dahulu.")
-    elif any(not q["soal"].strip() or not q["acuan"].strip() for q in soal_batch):
-        st.error("Lengkapi teks soal dan acuan untuk setiap nomor.")
-    elif file_batch is None:
-        st.error("Unggah CSV jawaban siswa terlebih dahulu.")
-    else:
-        try:
-            students = parse_csv_batch(file_batch, int(jumlah_soal))
-            batch_data = {"soal_dan_acuan": soal_batch, "siswa": students}
-            prompt_batch = f"""
-Nilai jawaban uraian semua siswa dan semua nomor dengan teliti.
-Gunakan rubrik berbobot ini untuk menilai setiap jawaban:
-{json.dumps(rubrik_aktif, ensure_ascii=False)}
-Beri skor 0 sampai 100 untuk setiap komponen dan hitung skor total
-sebagai jumlah skor komponen dikali bobotnya dibagi 100.
-Terima metode lain yang benar. Jangan mengarang jawaban. Jawaban kosong
-dinilai berdasarkan isinya yang kosong. Untuk setiap pasangan siswa dan
-nomor soal berikan skor 0 sampai 100, bukti berupa kutipan persis (atau
-teks kosong), dan alasan singkat. Kembalikan tiap pasangan tepat satu kali.
-Keluarkan JSON saja dengan struktur:
-{{
-  "hasil": [
-    {{"siswa_id": 1, "nomor": 1, "skor": 0, "rincian": [{{"kriteria": "Nama komponen", "skor": 0, "alasan": ""}}], "bukti": "", "alasan": ""}}
-  ]
-}}
-Data:
-{json.dumps(batch_data, ensure_ascii=False)}
-"""
-            batch_key = os.getenv("OPENROUTER_API_KEY")
-            if not batch_key:
-                st.error("API key belum terbaca. Periksa Codespaces secret.")
-            else:
-                with st.spinner(f"Menilai {len(students)} siswa dalam satu permintaan..."):
-                    response = requests.post(
-                        OPENROUTER_URL,
-                        headers={"Authorization": f"Bearer {batch_key}", "Content-Type": "application/json"},
-                        json={
-                            "model": MODEL,
-                            "messages": [{"role": "user", "content": prompt_batch}],
-                            "temperature": 0.1,
-                            "max_tokens": 8192,
-                            "response_format": {"type": "json_object"},
-                        },
-                        timeout=180,
-                    )
-                if not response.ok:
-                    st.error(f"OpenRouter memberi respons {response.status_code}.")
-                    st.code(response.text[:1000])
-                else:
-                    data_batch = response.json()
-                    pilihan_batch = data_batch.get("choices") or [{}]
-                    pilihan_batch = pilihan_batch[0] if pilihan_batch else {}
-                    message_batch = pilihan_batch.get("message") or {}
-                    answer_text = message_batch.get("content")
-                    if not isinstance(answer_text, str) or not answer_text.strip():
-                        alasan = pilihan_batch.get("finish_reason", "tidak tersedia")
-                        token = data_batch.get("usage", {}).get("completion_tokens", "tidak tersedia")
-                        raise ValueError(
-                            "OpenRouter mengembalikan jawaban batch kosong. "
-                            f"Model: {data_batch.get('model', MODEL)}; finish_reason: {alasan}; "
-                            f"token keluaran: {token}. Coba proses lebih sedikit siswa sekaligus."
-                        )
-                    answer_text = answer_text.strip()
-                    lines = answer_text.splitlines()
-                    fence = chr(96) * 3
-                    if lines and lines[0].strip().startswith(fence):
-                        lines = lines[1:]
-                    if lines and lines[-1].strip() == fence:
-                        lines = lines[:-1]
-                    result_rows = json.loads("\n".join(lines))["hasil"]
-                    by_student = {item["siswa_id"]: item for item in students}
-                    by_question = {item["nomor"]: item for item in soal_batch}
-                    parsed = []
-                    seen = set()
-                    for item in result_rows:
-                        sid, q_no = int(item["siswa_id"]), int(item["nomor"])
-                        score, rubric_detail = hitung_skor_rubrik(item.get("rincian", []), rubrik_aktif)
-                        if sid not in by_student or q_no not in by_question or (sid, q_no) in seen:
-                            raise ValueError("Hasil AI memiliki siswa atau nomor soal yang salah/berulang.")
-                        if not 0 <= score <= 100:
-                            raise ValueError("Skor harus berada antara 0 dan 100.")
-                        student, question = by_student[sid], by_question[q_no]
-                        parsed.append({
-                            "siswa_id": sid,
-                            "nama_siswa": student["nama_siswa"],
-                            "nomor": q_no,
-                            "soal": question["soal"],
-                            "acuan": question["acuan"],
-                            "jawaban": student["jawaban"][q_no - 1],
-                            "skor_ai": score,
-                            "rincian": rubric_detail,
-                            "bukti": str(item.get("bukti", "")),
-                            "alasan": str(item.get("alasan", "")),
-                        })
-                        seen.add((sid, q_no))
-                    if len(seen) != len(students) * int(jumlah_soal):
-                        raise ValueError("Ada jawaban yang belum mendapat penilaian.")
-                    st.session_state["hasil_batch"] = sorted(parsed, key=lambda x: (x["siswa_id"], x["nomor"]))
-                    st.session_state["metadata_batch"] = {
-                        "nama_guru": guru_batch.strip(),
-                        "mapel": mapel_batch.strip(),
-                        "nama_tugas": tugas_batch.strip(),
-                    }
-                    st.session_state["batch_telah_disimpan"] = False
-                    st.success(f"Batch selesai: {len(students)} siswa siap ditinjau.")
-        except requests.RequestException as error:
-            st.error(f"Permintaan batch ke OpenRouter gagal: {error}")
-        except (KeyError, IndexError, TypeError, ValueError) as error:
-            st.error(f"Batch belum dapat diproses: {error}")
-
-# Human-in-the-loop: guru merevisi skor tiap jawaban dan menyetujui hasil tiap siswa.
-if st.session_state.get("hasil_batch"):
-    batch_results = st.session_state["hasil_batch"]
-    ids = sorted({item["siswa_id"] for item in batch_results})
-    all_approved = True
-    scores_by_student = {}
-    st.subheader("Tinjau dan revisi nilai batch")
-    for sid in ids:
-        rows = [item for item in batch_results if item["siswa_id"] == sid]
-        name = rows[0]["nama_siswa"]
-        st.markdown(f"### {name}")
-        student_scores = []
-        for row in rows:
-            with st.container(border=True):
-                info_col, score_col = st.columns([3, 1])
-                with info_col:
-                    st.markdown(f"**Soal {row['nomor']} · Saran AI {row['skor_ai']:g}/100**")
-                    st.write(row["alasan"])
-                    st.dataframe(row.get("rincian", []), hide_index=True, width="stretch")
-                    with st.expander("Lihat soal, jawaban, dan acuan"):
-                        st.markdown("**Soal**")
-                        st.text(row["soal"])
-                        st.markdown("**Jawaban siswa**")
-                        st.text(row["jawaban"])
-                        st.markdown("**Acuan**")
-                        st.text(row["acuan"])
-                    if row["bukti"] and normalkan(row["bukti"]) in normalkan(row["jawaban"]):
-                        st.success(f"Kutipan AI ditemukan: “{row['bukti']}”")
-                    else:
-                        st.warning("Periksa bukti AI terhadap jawaban siswa.")
-                with score_col:
-                    score = st.number_input(
-                        "Revisi nilai guru",
-                        min_value=0,
-                        max_value=100,
-                        value=int(round(row["skor_ai"])),
-                        step=1,
-                        key=f"nilai_batch_{sid}_{row['nomor']}",
-                    )
-                student_scores.append(float(score))
-        approved = st.checkbox(f"Saya sudah meninjau seluruh nilai {name}", key=f"setuju_batch_{sid}")
-        all_approved = all_approved and approved
-        scores_by_student[sid] = student_scores
-
-    st.download_button(
-        "Unduh rekap batch untuk Excel/e-Rapor (CSV)",
-        data=ekspor_batch_csv(),
-        file_name="rekap_nilai_kelas.csv",
-        mime="text/csv",
-        key="unduh_rekap_batch",
-    )
-    if not st.session_state.get("batch_telah_disimpan", False):
-        if not akun_aktif:
-            st.info("Mode uji coba: login diperlukan untuk menyimpan batch ke riwayat.")
-            if st.button("Masuk atau buat akun untuk menyimpan batch", key="login_batch"):
-                st.session_state["auth_mode"] = "masuk"
-                st.rerun()
-        elif all_approved:
-            if st.button("Simpan semua hasil batch", type="primary", key="simpan_batch"):
-                try:
-                    meta = st.session_state["metadata_batch"]
-                    for sid in ids:
-                        rows = [item for item in batch_results if item["siswa_id"] == sid]
-                        student_meta = {**meta, "nama_siswa": rows[0]["nama_siswa"]}
-                        final_scores = scores_by_student[sid]
-                        final_average = sum(final_scores) / len(final_scores)
-                        simpan_koreksi(
-                            akun_aktif["id"], student_meta, rows, final_scores, final_average
-                        )
-                    st.session_state["batch_telah_disimpan"] = True
-                    st.success(f"Semua hasil untuk {len(ids)} siswa berhasil disimpan.")
-                except sqlite3.Error as error:
-                    st.error(f"Gagal menyimpan batch: {error}")
-        else:
-            st.warning("Setujui hasil setiap siswa sebelum menyimpan batch.")
-    else:
-        st.success("Hasil batch sudah tersimpan di akunmu.")
-
 
 # Fitur riwayat: tampilkan hasil milik akun yang sedang login saja.
 st.divider()
