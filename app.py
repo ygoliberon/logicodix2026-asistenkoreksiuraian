@@ -317,18 +317,15 @@ st.markdown(
 .chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
 .alasan { background:rgba(127,127,127,.08); border: 3px solid rgba(230, 234, 241, 0.27); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
 
-div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="stVerticalBlockBorderWrapper"] > div,
-div[data-testid="stExpander"],
-[data-testid="stForm"] {
+div[data-testid="stVerticalBlockBorderWrapper"] {
     border: 3px solid rgba(230, 234, 241, 0.27) !important;
+    border-radius: 16px !important;
 }
 
 
-div[data-testid="stVerticalBlockBorderWrapper"],
-div[data-testid="stExpander"],
-[data-testid="stForm"] {
+div[data-testid="stVerticalBlockBorderWrapper"] {
     border: 3px solid rgba(230, 234, 241, 0.27) !important;
+    border-radius: 16px !important;
 }
 
 [data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 3px solid rgba(230, 234, 241, 0.27) !important; border-radius:11px; }
@@ -342,6 +339,19 @@ div[data-testid="stExpander"],
 [data-testid="stSidebar"] { border: 3px solid rgba(230, 234, 241, 0.27); }
 [data-testid="stAlert"] { border-radius:12px; }
 @media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
+
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 3px solid rgba(230, 234, 241, 0.27) !important;
+    border-radius: 16px !important;
+}
+hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: none !important;
+    height: 3px !important;
+    border-radius: 2px !important;
+}
+
 </style>
 <div class="hero">
   <span class="hero-kicker">Asisten guru · penilaian uraian</span>
@@ -378,23 +388,9 @@ if GAMBAR_LATAR is not None:
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"],
-        [data-testid="stForm"] {{
-            position: relative;
-            overflow: hidden;
-            background: rgba(0, 0, 0, 0.55) !important;
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
             border: 3px solid rgba(230, 234, 241, 0.27) !important;
-            border-radius: 16px;
-            box-shadow: 0 12px 32px rgba(12, 5, 25, .3);
-            backdrop-filter: blur(16px) saturate(125%) !important;
-            -webkit-backdrop-filter: blur(16px) saturate(125%) !important;
-        }}
-        div[data-testid="stVerticalBlockBorderWrapper"] > div,
-        [data-testid="stForm"] > div {{
-            background: transparent !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            border-radius: inherit;
+            border-radius: 16px !important;
         }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
@@ -407,6 +403,12 @@ if GAMBAR_LATAR is not None:
             background: rgba(31, 19, 49, .94);
         }}
         [data-testid="stHeader"] {{ background: rgba(0, 0, 0, 0); }}
+        hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {{
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border: none !important;
+            height: 3px !important;
+            border-radius: 2px !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
