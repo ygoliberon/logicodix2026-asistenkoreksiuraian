@@ -322,12 +322,6 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: 16px !important;
 }
 
-
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 3px solid rgba(230, 234, 241, 0.27) !important;
-    border-radius: 16px !important;
-}
-
 [data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 3px solid rgba(230, 234, 241, 0.27) !important; border-radius:11px; }
 [data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
 [data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
@@ -338,13 +332,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 .stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(139,92,246,.22); }
 [data-testid="stSidebar"] { border: 3px solid rgba(230, 234, 241, 0.27); }
 [data-testid="stAlert"] { border-radius:12px; }
-@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
 
-
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 3px solid rgba(230, 234, 241, 0.27) !important;
-    border-radius: 16px !important;
-}
 hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
     background-color: rgba(255, 255, 255, 0.2) !important;
     border: none !important;
@@ -352,6 +340,7 @@ hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
     border-radius: 2px !important;
 }
 
+@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
 </style>
 <div class="hero">
   <span class="hero-kicker">Asisten guru · penilaian uraian</span>
@@ -428,7 +417,6 @@ with kol_masuk:
     if akun_aktif:
         if st.button("Keluar", key="tombol_keluar", width="stretch"):
             st.session_state.pop("akun_aktif", None)
-            # PERBAIKAN: key yang benar adalah hasil_penilaian_batch
             st.session_state.pop("hasil_penilaian_batch", None)
             st.session_state.pop("siswa_tersimpan", None)
             st.session_state.pop("metadata_koreksi", None)
