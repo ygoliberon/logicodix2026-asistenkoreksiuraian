@@ -340,7 +340,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
 )
 
 # Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan_gambar".
-FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
+FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
      if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
@@ -415,7 +415,9 @@ with kol_masuk:
     if akun_aktif:
         if st.button("Keluar", key="tombol_keluar", width="stretch"):
             st.session_state.pop("akun_aktif", None)
-            st.session_state.pop("hasil_penilaian", None)
+            # PERBAIKAN: key yang benar adalah hasil_penilaian_batch
+            st.session_state.pop("hasil_penilaian_batch", None)
+            st.session_state.pop("siswa_tersimpan", None)
             st.session_state.pop("metadata_koreksi", None)
             st.session_state.pop("hasil_telah_disimpan", None)
             st.rerun()
@@ -712,46 +714,82 @@ if kirim:
                 soal["nomor"] for soal in daftar_soal
             }
 
+            # PROMPT OCR (versi baru): transkripsi apa adanya + penanda keraguan.
+            instruksi_ocr = (
+                "Kamu adalah transkriber tulisan tangan siswa untuk pelajaran matematika. "
+                "Tugasmu HANYA menyalin apa yang tertulis. Kamu bukan penilai dan bukan "
+                "pemecah soal.\n\n"
+
+                "KONTEKS\n"
+                "Foto-foto berikut adalah lembar jawaban milik satu siswa, diberikan sesuai "
+                "urutan lembar. Baca semuanya sebagai satu kumpulan.\n"
+                f"Nomor soal yang valid hanya: {sorted(nomor_soal_valid)}. Jangan membuat nomor lain. "
+                "Jangan mengeluarkan entri jawaban kosong atau placeholder.\n\n"
+
+                "LANGKAH KERJA\n"
+                "1. Ambil nama siswa jika tertulis di lembar (biasanya di bagian atas). "
+                "Jika tidak ada, isi dengan teks kosong.\n"
+                "2. Temukan nomor soal yang benar-benar tampak pada lembar, lalu kelompokkan "
+                "tulisan jawaban berdasarkan nomor tersebut. Jika satu jawaban berlanjut "
+                "di lembar berikutnya, gabungkan sesuai urutan.\n"
+                "3. Lembar bisa terbagi menjadi beberapa kolom atau bagian (misalnya kolom "
+                "kiri dan kanan, atau kotak bernomor seperti ① ②). Baca satu kolom sampai "
+                "selesai sebelum pindah ke kolom lain. Perhatikan nomor yang dilingkari "
+                "atau ditulis di pinggir sebagai penanda soal.\n"
+                "4. Tulis ulang tiap baris persis seperti yang tertulis siswa, dengan "
+                "urutan baris yang sama. Pisahkan baris dengan karakter newline.\n\n"
+
+                "ATURAN TRANSKRIPSI (PENTING)\n"
+                "- Salin apa adanya. JANGAN memperbaiki, menghitung ulang, menyesuaikan, "
+                "atau menambahkan langkah. Jika siswa menulis angka yang salah atau "
+                "perhitungan yang keliru, salin kesalahan itu apa adanya.\n"
+                "- JANGAN mengubah angka agar cocok dengan angka lain di lembar, dengan "
+                "perhitungan, atau dengan logika soal. Ketidakcocokan angka adalah "
+                "informasi yang dibutuhkan guru.\n"
+                "- Pecahan: tulis dalam bentuk linear, misalnya 616/28 atau (1/3) x 22/7. "
+                "Tulisan atas-bawah dengan garis di tengah adalah pecahan. Kata 'per' "
+                "atau garis miring bermakna pecahan atau pembagian.\n"
+                "- Operasi: tulis x untuk perkalian, : atau / untuk pembagian, sesuai "
+                "tulisan siswa. Pangkat tulis dengan ^, misalnya r^2 atau 10^2. Akar "
+                "tulis sebagai akar(...). Tulis pi sebagai π bila terlihat.\n"
+                "- Satuan (cm, m, m^2, dm, dst.) dan tanda sama dengan harus ikut disalin.\n"
+                "- Angka ambigu: pada tulisan tangan, angka 7 sering memakai garis "
+                "silang di tengah atau garis di atas, dan sering mirip angka 1. Angka 1 "
+                "biasanya lebih pendek dan tanpa garis atas. Angka 4 dan 9, serta 0 dan 6 "
+                "juga sering tertukar. Perhatikan bentuk setiap angka dengan teliti, "
+                "terutama pada angka yang berkali-kali muncul di lembar yang sama. "
+                "Bandingkan dengan cara siswa menulis angka itu di tempat lain pada "
+                "foto yang sama.\n"
+                "- Coretan: tulisan yang dicoret jangan dimasukkan, kecuali satu-satunya "
+                "isi baris itu. Jika dimasukkan, beri tanda [dicoret].\n"
+                "- Jika ada bagian yang tidak terbaca sama sekali, tulis [?] di posisinya. "
+                "Jangan menebak untuk menutup kekosongan.\n\n"
+
+                "PENANDA KERAGUAN\n"
+                "Untuk setiap angka atau simbol yang kamu ragukan (bentuknya bisa dibaca "
+                "lebih dari satu cara), catat di field 'ragu':\n"
+                "- 'teks': potongan yang kamu tulis di transkripsi,\n"
+                "- 'alternatif': daftar bacaan lain yang mungkin,\n"
+                "- 'lokasi': deskripsi singkat letaknya, misalnya 'baris 3, kolom kanan'.\n"
+                "Lebih baik menandai angka yang sebenarnya benar daripada melewatkan "
+                "angka yang salah baca. Angka yang kamu yakini tidak perlu ditandai.\n\n"
+
+                "BAGIAN YANG TIDAK DAPAT DIPASANGKAN\n"
+                "Jika ada tulisan nyata yang tidak dapat dikenali atau tidak dapat "
+                "dipasangkan dengan nomor soal, masukkan ke 'tidak_terpetakan' beserta "
+                "salinannya. Jangan mengisinya dengan teks kosong.\n\n"
+
+                "FORMAT KELUARAN\n"
+                "Keluarkan JSON saja, tanpa penjelasan dan tanpa blok kode:\n"
+                '{"nama_siswa":"nama yang terbaca atau teks kosong",'
+                '"jawaban":[{"nomor":1,"transkripsi":"baris 1\\nbaris 2",'
+                '"ragu":[{"teks":"616","alternatif":["676"],"lokasi":"baris 4"}]}],'
+                '"tidak_terpetakan":[]}'
+            )
+
             try:
                 for siswa in daftar_siswa:
-                    konten_ocr = [
-                        {
-                            "type": "text",
-                            "text": (
-                                "Foto-foto berikut adalah lembar jawaban milik "
-                                "satu siswa. Baca semua foto sebagai satu kumpulan "
-                                "dan ikuti urutan lembar yang diberikan.\n\n"
-                                f"Nomor soal yang tersedia pada tugas ini hanya "
-                                f"{sorted(nomor_soal_valid)}. ",
-                                "Ambil nama siswa yang terlihat dan kelompokkan jawaban "
-                                "berdasarkan nomor soal yang benar-benar tampak pada foto. "
-                                "Jangan membuat nomor soal di luar daftar yang tersedia. "
-                                "Jika nomor pada foto tidak jelas atau tampak berbeda dari daftar, "
-                                "jangan paksa memasangkannya; masukkan bagian itu ke "
-                                "'tidak_terpetakan' untuk diperiksa guru. "
-                                "soal dari tulisan pada lembar, lalu kelompokkan "
-                                "jawaban berdasarkan nomor tersebut. Jika jawaban "
-                                "soal berlanjut di lembar berikutnya, gabungkan "
-                                "bagian-bagiannya sesuai urutan.\n\n"
-                                "Transkripsikan tulisan dengan teliti. Jangan "
-                                "menambahkan langkah yang tidak ditulis siswa. "
-                                "Jika nomor soal atau teks tidak dapat dikenali, "
-                                "jangan menebak; masukkan bagian itu ke "
-                                "'tidak_terpetakan'.\n\n"
-                                "Untuk kemungkinan salah OCR, jika angka pada "
-                                "bagian diketahui berbeda dari angka yang dipakai "
-                                "secara konsisten dalam perhitungan, dan bentuk "
-                                "tulisannya memungkinkan salah baca, gunakan "
-                                "pembacaan yang paling didukung oleh tulisan dan "
-                                "perhitungan siswa. Jangan gunakan kunci jawaban "
-                                "atau mengubah isi hanya agar hasilnya cocok.\n\n"
-                                "Keluarkan JSON saja dengan format:\n"
-                                '{"nama_siswa":"nama yang terbaca",'
-                                '"jawaban":[{"nomor":1,"transkripsi":"teks jawaban"}],'
-                                '"tidak_terpetakan":[]}'
-                            ),
-                        }
-                    ]
+                    konten_ocr = [{"type": "text", "text": instruksi_ocr}]
 
                     # Melampirkan foto sesuai urutan lembar siswa.
                     for foto in siswa["foto"]:
@@ -792,9 +830,12 @@ if kirim:
                     )
 
                     jawaban_ocr = {}
+                    ragu_ocr = {}  # BARU: penanda ragu per nomor soal
                     bagian_tidak_terpetakan = data_ocr.get(
                         "tidak_terpetakan", []
                     )
+                    if not isinstance(bagian_tidak_terpetakan, list):
+                        bagian_tidak_terpetakan = [bagian_tidak_terpetakan]
 
                     for jawaban in data_ocr.get("jawaban", []):
                         nomor = jawaban.get("nomor")
@@ -819,6 +860,13 @@ if kirim:
                         else:
                             jawaban_ocr[nomor] = teks_jawaban
 
+                        # BARU: simpan penanda ragu dari OCR.
+                        daftar_ragu = jawaban.get("ragu") or []
+                        if isinstance(daftar_ragu, list):
+                            ragu_ocr.setdefault(nomor, []).extend(
+                                r for r in daftar_ragu if isinstance(r, dict)
+                            )
+
                     nama_terbaca = str(
                         data_ocr.get("nama_siswa", "")
                     ).strip()
@@ -837,6 +885,7 @@ if kirim:
                             "nama_siswa": nama_siswa_akhir,
                             "nama_dari_ocr": nama_terbaca,
                             "jawaban": jawaban_ocr,
+                            "ragu": ragu_ocr,  # BARU
                             "tidak_terpetakan": bagian_tidak_terpetakan,
                             "gambar_bytes": [
                                 foto["gambar"].getvalue()
@@ -874,6 +923,10 @@ if kirim:
                                     "jawaban": siswa_ocr["jawaban"].get(
                                         soal["nomor"], ""
                                     ),
+                                    # BARU: bagian yang diragukan OCR
+                                    "ragu_ocr": siswa_ocr["ragu"].get(
+                                        soal["nomor"], []
+                                    ),
                                 }
                             )
 
@@ -892,10 +945,11 @@ if kirim:
 
                         Aturan pemeriksaan:
                         - Nilai jawaban berdasarkan teks pada bagian Data.
-                        - Jika angka pada bagian diketahui berbeda dari angka yang digunakan secara
-                        konsisten dalam perhitungan, dan perhitungannya konsisten secara matematis,
-                        perlakukan perbedaan itu sebagai kemungkinan koreksi OCR. Jangan mengurangi
-                        nilai hanya karena perbedaan tersebut.
+                        - Jika sebuah bagian jawaban tercantum di "ragu_ocr", angka atau simbol itu
+                        mungkin salah dibaca OCR. Jangan mengurangi nilai karena bagian tersebut;
+                        sebutkan di alasan bahwa guru perlu mencocokkannya dengan foto.
+                        - Jika ada ketidakkonsistenan angka yang TIDAK tercantum di "ragu_ocr",
+                        nilai apa adanya sesuai teks.
                         - Periksa operasi hitung, satuan, dan jawaban akhir sendiri.
                         - Jangan mengarang kutipan atau isi jawaban.
                         - Jika jawaban untuk suatu nomor kosong, jangan mengarang transkripsinya.
@@ -989,6 +1043,7 @@ if kirim:
                                     "alasan": str(item_nilai.get("alasan", "")),
                                     "jawaban": jawaban_asli,
                                     "jawaban_terbaca": jawaban_asli,
+                                    "ragu": siswa_ocr["ragu"].get(nomor, []),  # BARU
                                     "sumber_foto": True,
                                     "gambar_bytes": siswa_ocr["gambar_bytes"],
                                     "soal": daftar_soal[nomor - 1]["soal"],
@@ -1135,6 +1190,24 @@ if hasil_batch:
                         "transkripsi. Periksa foto dan alasan penilaiannya."
                     )
 
+                # BARU: peringatan bagian yang diragukan OCR.
+                ragu_item = item.get("ragu", [])
+                if ragu_item:
+                    baris_ragu = []
+                    for r in ragu_item:
+                        alt = ", ".join(
+                            str(a) for a in (r.get("alternatif") or [])
+                        )
+                        baris_ragu.append(
+                            f"- **{r.get('teks', '?')}** "
+                            f"(kemungkinan lain: {alt or '-'}) "
+                            f"— {r.get('lokasi', '')}"
+                        )
+                    st.warning(
+                        "OCR ragu pada bagian berikut. Cocokkan dengan foto:\n\n"
+                        + "\n".join(baris_ragu)
+                    )
+
                 with st.expander("Lihat transkripsi jawaban"):
                     st.text(jawaban_asli)
 
@@ -1259,4 +1332,3 @@ if akun_aktif:
         st.caption("Belum ada hasil tersimpan di akun ini.")
 else:
     st.caption("Masuk untuk melihat riwayat hasil yang tersimpan di akunmu.")
-
