@@ -304,28 +304,28 @@ siapkan_database()
 st.markdown(
     """
 <style>
-:root { --accent:#6256e8; --border:rgba(128,128,128,.22); }
+:root { --accent:#6256e8; --border: 3px solid rgba(230, 234, 241, 0.27); }
 .block-container { max-width:980px; padding:2.2rem 1.4rem 4rem; }
 .hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4c1d95 0%,#6d35c9 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(91,33,182,.28); }
-.hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
+.hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
 .hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
 .hero p { color:#ede9fe; margin:.55rem 0 0; max-width:650px; font-size:1rem; line-height:1.6; position:relative; z-index:1; }
-.hero-kicker { display:inline-block; margin-bottom:.7rem; padding:.28rem .65rem; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:999px; color:#f5f3ff; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.hero-kicker { display:inline-block; margin-bottom:.7rem; padding:.28rem .65rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:999px; color:#f5f3ff; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
 .badge { display:inline-block; color:#fff; font-weight:700; padding:.3rem .8rem; border-radius:999px; font-size:.86rem; }
 .skor-besar { font-size:2.2rem; font-weight:800; line-height:1; }
-.chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:12px; font-size:.92rem; }
-.chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:12px; font-size:.92rem; }
-.alasan { background:rgba(127,127,127,.08); border:1px solid var(--border); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
-div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 16px; border: 1px solid rgba(237, 235, 232, 0.4) !important; }
-[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 1px solid rgba(237, 235, 232, 0.4) !important; border-radius:11px; }
+.chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
+.chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
+.alasan { background:rgba(127,127,127,.08); border: 3px solid rgba(230, 234, 241, 0.27); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
+div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 16px; border: 3px solid rgba(230, 234, 241, 0.27) !important; }
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 3px solid rgba(230, 234, 241, 0.27) !important; border-radius:11px; }
 [data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
 [data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
-[data-testid="stFileUploader"] section { background:rgba(0, 0, 0, 0.55); border: 1px solid rgba(237, 235, 232, 0.4); border-radius:13px; }
+[data-testid="stFileUploader"] section { background:rgba(0, 0, 0, 0.55); border: 3px solid rgba(230, 234, 241, 0.27); border-radius:13px; }
 [data-testid="stFileUploader"] section, [data-testid="stFileUploader"] section * { color:#f3eaff; }
-[data-testid="stCameraInput"] button { background:rgba(69,43,105,.86); color:#f4f7fb; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:10px; }
+[data-testid="stCameraInput"] button { background:rgba(69,43,105,.86); color:#f4f7fb; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:10px; }
 .stButton>button, .stFormSubmitButton>button { min-height:2.8rem; border-radius:12px; font-weight:650; padding:.6rem 1.05rem; transition:transform .15s ease, box-shadow .15s ease; }
 .stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(139,92,246,.22); }
-[data-testid="stSidebar"] { border: 1px solid rgba(237, 235, 232, 0.4); }
+[data-testid="stSidebar"] { border: 3px solid rgba(230, 234, 241, 0.27); }
 [data-testid="stAlert"] { border-radius:12px; }
 @media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
 </style>
@@ -369,7 +369,7 @@ if GAMBAR_LATAR is not None:
             position: relative;
             overflow: hidden;
             background: rgba(0, 0, 0, 0.55) !important;
-            border: 1px solid rgba(237, 235, 232, 0.4) !important;
+            border: 3px solid rgba(230, 234, 241, 0.27) !important;
             border-radius: 16px;
             box-shadow: 0 12px 32px rgba(12, 5, 25, .3);
             backdrop-filter: blur(16px) saturate(125%) !important;
