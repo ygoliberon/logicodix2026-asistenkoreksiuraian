@@ -425,41 +425,52 @@ if GAMBAR_LATAR is not None:
         unsafe_allow_html=True,
     )
 
-if tema_aplikasi == "Terang":
+if tema_aplikasi == "light":
     st.markdown(
         """
         <style>
-        .stApp, [data-testid="stAppViewContainer"] { color: #281d36; }
+        .stApp, [data-testid="stAppViewContainer"] { color: #392447; }
+        [data-testid="stSidebar"] {
+            background: rgba(246, 228, 250, .97) !important;
+        }
         [data-testid="stSidebar"] > div:first-child {
-            background: rgba(255, 255, 255, .88) !important;
+            background: rgba(246, 228, 250, .97) !important;
+        }
+        [data-testid="stSidebar"] * {
+            color: #392447 !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            background: rgba(255, 255, 255, .70) !important;
-            border-color: rgba(73, 47, 98, .30) !important;
+            background: rgba(247, 229, 252, .76) !important;
+            border-color: rgba(130, 88, 151, .34) !important;
         }
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
         [data-testid="stNumberInput"] input {
-            background: rgba(255, 255, 255, .96) !important;
-            color: #281d36 !important;
-            border-color: rgba(73, 47, 98, .35) !important;
+            background: rgba(255, 240, 249, .98) !important;
+            color: #392447 !important;
+            border-color: #8b55b5 !important;
+        }
+        [data-testid="stNumberInput"] button {
+            background: rgba(241, 222, 248, .98) !important;
+            color: #392447 !important;
+            border-color: rgba(141, 101, 160, .36) !important;
         }
         [data-testid="stTextArea"] textarea::placeholder,
         [data-testid="stTextInput"] input::placeholder {
-            color: rgba(40, 29, 54, .55) !important;
+            color: rgba(73, 49, 86, .58) !important;
         }
         [data-testid="stFileUploader"] section {
-            background: rgba(255, 255, 255, .78) !important;
-            border-color: rgba(73, 47, 98, .34) !important;
+            background: rgba(247, 232, 253, .86) !important;
+            border-color: rgba(141, 101, 160, .40) !important;
         }
         [data-testid="stFileUploader"] section,
         [data-testid="stFileUploader"] section * {
-            color: #281d36 !important;
+            color: #392447 !important;
         }
         [data-testid="stCameraInput"] button {
-            background: rgba(255, 255, 255, .90) !important;
-            color: #281d36 !important;
-            border-color: rgba(73, 47, 98, .34) !important;
+            background: rgba(247, 231, 252, .96) !important;
+            color: #392447 !important;
+            border-color: rgba(141, 101, 160, .40) !important;
         }
         </style>
         """,
