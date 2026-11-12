@@ -368,18 +368,18 @@ if GAMBAR_LATAR is not None:
         [data-testid="stForm"] {{
             position: relative;
             overflow: hidden;
-            background: rgba(54, 34, 78, .64) !important;
-            border: 1px solid rgba(255, 255, 255, .48) !important;
+            background: rgba(54, 34, 78, .34) !important;
+            border: 1px solid rgba(255, 255, 255, .36) !important;
             border-radius: 16px;
-            box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
-            backdrop-filter: blur(100px) saturate(135%) !important;
-            -webkit-backdrop-filter: blur(100px) saturate(135%) !important;
+            box-shadow: 0 12px 32px rgba(12, 5, 25, .28);
+            backdrop-filter: blur(18px) saturate(135%) !important;
+            -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
         }}
         div[data-testid="stVerticalBlockBorderWrapper"] > div,
         [data-testid="stForm"] > div {{
-            background: rgba(54, 34, 78, .72) !important;
-            backdrop-filter: blur(100px) saturate(135%) !important;
-            -webkit-backdrop-filter: blur(100px) saturate(135%) !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             border-radius: inherit;
         }}
         [data-testid="stTextArea"] textarea,
