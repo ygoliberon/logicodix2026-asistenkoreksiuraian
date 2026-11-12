@@ -377,7 +377,10 @@ if GAMBAR_LATAR is not None:
         }}
         div[data-testid="stVerticalBlockBorderWrapper"] > div,
         [data-testid="stForm"] > div {{
-            background: transparent !important;
+            background: rgba(54, 34, 78, .72) !important;
+            backdrop-filter: blur(100px) saturate(135%) !important;
+            -webkit-backdrop-filter: blur(100px) saturate(135%) !important;
+            border-radius: inherit;
         }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
