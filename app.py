@@ -368,7 +368,7 @@ if GAMBAR_LATAR is not None:
         [data-testid="stForm"] {{
             position: relative;
             overflow: hidden;
-            background: rgba(99, 72, 125, .38) !important;
+            background: rgba(54, 34, 78, .78) !important;
             border: 1px solid rgba(255, 255, 255, .48) !important;
             border-radius: 16px;
             box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
