@@ -340,7 +340,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-col
 )
 
 # Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan_gambar".
-FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan gambar")
+FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
      if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
@@ -381,9 +381,9 @@ if GAMBAR_LATAR is not None:
             inset: 1px;
             z-index: -1;
             border-radius: inherit;
-            background: rgba(52, 34, 78, .78);
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
+            background: rgba(52, 34, 78, .56);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             pointer-events: none;
         }}
         [data-testid="stTextArea"] textarea,
