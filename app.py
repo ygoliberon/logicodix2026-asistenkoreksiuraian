@@ -367,12 +367,12 @@ if GAMBAR_LATAR is not None:
         div[data-testid="stVerticalBlockBorderWrapper"],
         [data-testid="stForm"] {{
             position: relative;
-            background: rgba(52, 34, 78, .42) !important;
+            background: rgba(38, 20, 60, .74) !important;
             border: 1px solid rgba(255, 255, 255, .42) !important;
             border-radius: 16px;
             box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
-            backdrop-filter: blur(16px) saturate(125%);
-            -webkit-backdrop-filter: blur(16px) saturate(125%);
+            backdrop-filter: blur(22px) saturate(135%) !important;
+            -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
         }}
         [data-testid="stTextArea"] textarea,
         [data-testid="stTextInput"] input,
