@@ -294,7 +294,7 @@ def minta_openrouter(api_key, model, konten):
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
-    layout="centered",
+    layout="wide",
 )
 
 # Memastikan tabel database siap sebelum aplikasi digunakan
@@ -314,7 +314,7 @@ st.markdown(
     """
 <style>
 :root { --accent:#6256e8; --border: 3px solid rgba(230, 234, 241, 0.27); }
-.block-container { max-width:980px; padding:2.2rem 1.4rem 4rem; }
+.block-container { max-width:1480px; padding:1.2rem 2rem 4rem; }
 div[data-testid="stSegmentedControl"] {
     border-radius: 999px;
     padding: .2rem;
@@ -326,6 +326,12 @@ div[data-testid="stSegmentedControl"] button {
 div[data-testid="stSelectbox"] > div {
     border-radius: 12px;
 }
+.about-title { text-align:center; font-size:clamp(2.7rem,7vw,5rem); font-style:italic; font-weight:900; letter-spacing:.04em; margin:1rem 0 3rem; color:#f5eaff; }
+.st-key-nav_beranda button, .st-key-nav_masuk button, .st-key-nav_daftar button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
+.st-key-nav_beranda button:hover, .st-key-nav_masuk button:hover { color:#d9b5ff !important; }
+.st-key-nav_daftar button { border:1px solid rgba(255,255,255,.55) !important; border-radius:999px !important; }
+div[data-testid="stPopover"] > button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
+div[data-testid="stPopoverBody"] { background:rgba(48,31,76,.92) !important; backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.2); border-radius:16px; }
 .hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4c1d95 0%,#6d35c9 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(91,33,182,.28); }
 .hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
 .hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
@@ -444,6 +450,9 @@ if tema_aplikasi == "light":
         [data-testid="stSidebar"] * {
             color: #392447 !important;
         }
+        .about-title { color: #5b2678 !important; }
+        div[data-testid="stPopoverBody"] { background:rgba(248,231,255,.96) !important; border-color:rgba(112,68,139,.28) !important; }
+        div[data-testid="stPopoverBody"] * { color:#392447 !important; }
         div[data-testid="stVerticalBlockBorderWrapper"] {
             background: rgba(247, 229, 252, .76) !important;
             border-color: rgba(130, 88, 151, .34) !important;
@@ -488,41 +497,37 @@ st.session_state.setdefault("nav_primary", "Beranda")
 st.session_state.setdefault("nav_asisten", "Asisten Koreksi Ujian")
 akun_aktif = st.session_state.get("akun_aktif")
 
-# Navigasi utama, submenu Asisten Guru, dan tombol akun.
+# Navigasi atas: logo, Beranda, dropdown Asisten Guru, dan tombol akun.
 file_logo = Path(__file__).with_name("bahan_gambar") / "logo.png"
-kol_logo, kol_nav, kol_subnav, kol_akun = st.columns([0.8, 2.1, 2.5, 2.2])
+nav_primary = st.session_state.get("nav_primary", "Beranda")
+halaman_asisten = st.session_state.get("nav_asisten", "Asisten Koreksi Ujian")
+akun_aktif = st.session_state.get("akun_aktif")
+
+kol_logo, kol_spasi_kiri, kol_beranda, kol_asisten, kol_spasi_kanan, kol_akun = st.columns([1.2, 2.2, 1.2, 1.8, 2.2, 2.2])
 with kol_logo:
     if file_logo.is_file():
-        st.image(str(file_logo), width=64)
+        st.image(str(file_logo), width=68)
     else:
         st.markdown("## 📝")
 
-with kol_nav:
-    nav_primary = st.segmented_control(
-        "Navigasi",
-        options=["Beranda", "Asisten Guru"],
-        default="Beranda",
-        key="nav_primary",
-        label_visibility="collapsed",
-    )
-if nav_primary is None:
-    nav_primary = "Beranda"
+with kol_beranda:
+    if st.button("Beranda", key="nav_beranda", width="stretch"):
+        st.session_state["nav_primary"] = "Beranda"
+        st.rerun()
 
-with kol_subnav:
-    if nav_primary == "Asisten Guru":
-        halaman_asisten = st.selectbox(
-            "Menu Asisten Guru",
-            ["Asisten Koreksi Ujian", "History / Riwayat"],
-            key="nav_asisten",
-            label_visibility="collapsed",
-        )
-    else:
-        halaman_asisten = None
-        st.empty()
+with kol_asisten:
+    with st.popover("Asisten Guru"):
+        if st.button("Asisten Koreksi Ujian", key="nav_assistant_exam", width="stretch"):
+            st.session_state["nav_primary"] = "Asisten Guru"
+            st.session_state["nav_asisten"] = "Asisten Koreksi Ujian"
+            st.rerun()
+        if st.button("History / Riwayat", key="nav_assistant_history", width="stretch"):
+            st.session_state["nav_primary"] = "Asisten Guru"
+            st.session_state["nav_asisten"] = "History / Riwayat"
+            st.rerun()
 
 with kol_akun:
     if akun_aktif:
-        st.caption("Masuk sebagai " + akun_aktif["email"])
         if st.button("Keluar", key="nav_keluar", width="stretch"):
             st.session_state.pop("akun_aktif", None)
             st.session_state.pop("hasil_penilaian_batch", None)
@@ -588,30 +593,30 @@ if not akun_aktif and st.session_state.get("auth_mode"):
             st.session_state["auth_mode"] = None
             st.rerun()
 
-# Beranda hanya berisi pengenalan aplikasi dan tombol untuk mencoba.
+# Beranda: informasi aplikasi dengan logo dan tombol Coba.
 if nav_primary == "Beranda":
-    st.markdown(
-        """
-        <div class="hero">
-          <span class="hero-kicker">Asisten guru · penilaian uraian</span>
-          <h1>📝 Asisten Koreksi Uraian</h1>
-          <p>Asisten AI untuk membantu guru memberikan saran nilai pada ujian uraian.
-          Guru tetap meninjau dan menetapkan nilai akhir.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.subheader("Tentang aplikasi")
-    st.markdown(
-        "Asisten Koreksi Uraian membantu guru menilai jawaban esai dengan rubrik, "
-        "meninjau saran nilai AI, mengubah nilai akhir secara manual, dan menyimpan "
-        "riwayat hasil saat sudah masuk ke akun."
-    )
-    st.info("AI memberi saran penilaian. Guru tetap memeriksa dan menentukan nilai akhir.")
-    if st.button("Coba sekarang", type="primary", width="stretch", key="mulai_dari_beranda"):
-        st.session_state["nav_primary"] = "Asisten Guru"
-        st.session_state["nav_asisten"] = "Asisten Koreksi Ujian"
-        st.rerun()
+    st.markdown('<h1 class="about-title">ABOUT</h1>', unsafe_allow_html=True)
+    with st.container(border=True):
+        kol_logo_about, kol_tentang = st.columns([1, 3])
+        with kol_logo_about:
+            if file_logo.is_file():
+                st.image(str(file_logo), width=260)
+            else:
+                st.markdown("## 📝")
+        with kol_tentang:
+            st.markdown(
+                "**ASISTEN KOREKSI URAIAN** adalah sebuah web berbasis **Python** "
+                "yang dibuat oleh **Tim Triboma** untuk mengikuti lomba "
+                "**Logicodix UNESA**. Web ini bertujuan untuk mempermudah guru "
+                "dalam menaruh nilai dan mengecek jawaban siswa secara mudah, "
+                "cepat, dan terstruktur."
+            )
+    kol_kosong_kiri, kol_coba, kol_kosong_kanan = st.columns([1, 1, 1])
+    with kol_coba:
+        if st.button("Coba", type="primary", width="stretch", key="mulai_dari_beranda"):
+            st.session_state["nav_primary"] = "Asisten Guru"
+            st.session_state["nav_asisten"] = "Asisten Koreksi Ujian"
+            st.rerun()
     st.stop()
 
 if halaman_asisten == "History / Riwayat":
