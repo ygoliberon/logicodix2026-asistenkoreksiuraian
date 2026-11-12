@@ -300,13 +300,14 @@ st.set_page_config(
 # Memastikan tabel database siap sebelum aplikasi digunakan
 siapkan_database()
 
-# Pilihan tema aplikasi; wallpaper mengikuti tema yang dipilih.
-tema_aplikasi = st.sidebar.radio(
-    "Tema tampilan",
-    ["Gelap", "Terang"],
-    horizontal=True,
-    key="tema_aplikasi",
-)
+# Mengikuti tema Light/Dark yang dipilih dari menu bawaan Streamlit.
+try:
+    tema_aplikasi = st.context.theme.type
+except (AttributeError, RuntimeError):
+    tema_aplikasi = "dark"
+
+if tema_aplikasi not in {"light", "dark"}:
+    tema_aplikasi = "dark"
 
 # Fitur tampilan: tema ungu, kartu, lencana skor, dan header responsif.
 st.markdown(
@@ -363,7 +364,7 @@ hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
 # Pilih wallpaper sesuai tema dari folder "bahan_gambar".
 FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
 NAMA_WALLPAPER = (
-    "background_terang.jpg" if tema_aplikasi == "Terang" else "background.jpg"
+    "background_terang.jpg" if tema_aplikasi == "light" else "background.jpg"
 )
 GAMBAR_LATAR = FOLDER_GAMBAR_LATAR / NAMA_WALLPAPER
 if not GAMBAR_LATAR.is_file():
@@ -377,7 +378,7 @@ if not GAMBAR_LATAR.is_file():
 if GAMBAR_LATAR is not None:
     tipe_gambar = mimetypes.guess_type(GAMBAR_LATAR.name)[0] or "image/jpeg"
     gambar_base64 = base64.b64encode(GAMBAR_LATAR.read_bytes()).decode("ascii")
-    if tema_aplikasi == "Terang":
+    if tema_aplikasi == "light":
         lapisan_awal = "rgba(255, 255, 255, .20)"
         lapisan_akhir = "rgba(255, 255, 255, .28)"
     else:
