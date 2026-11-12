@@ -389,6 +389,42 @@ if not GAMBAR_LATAR.is_file():
 if GAMBAR_LATAR is not None:
     tipe_gambar = mimetypes.guess_type(GAMBAR_LATAR.name)[0] or "image/jpeg"
     gambar_base64 = base64.b64encode(GAMBAR_LATAR.read_bytes()).decode("ascii")
+    FILE_PARTIKEL = FOLDER_GAMBAR_LATAR / "partikel.png"
+    if FILE_PARTIKEL.is_file():
+        tipe_partikel = mimetypes.guess_type(FILE_PARTIKEL.name)[0] or "image/png"
+        partikel_base64 = base64.b64encode(FILE_PARTIKEL.read_bytes()).decode("ascii")
+        css_partikel = f"""
+        .stApp {{ position: relative; isolation: isolate; }}
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: .05;
+            background-image: url("data:{tipe_partikel};base64,{partikel_base64}");
+            background-size: 150px 150px;
+            background-repeat: repeat;
+            animation: partikel-melayang 9s ease-in-out infinite,
+                       partikel-bergerak 34s linear infinite;
+            will-change: opacity, background-position;
+        }}
+        .stApp > header, .stApp > div {{ position: relative; z-index: 1; }}
+        @keyframes partikel-melayang {{
+            0%, 100% {{ opacity: .04; }}
+            45% {{ opacity: .30; }}
+            70% {{ opacity: .12; }}
+        }}
+        @keyframes partikel-bergerak {{
+            from {{ background-position: 0 0; }}
+            to {{ background-position: 150px -300px; }}
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .stApp::before {{ animation: none; opacity: .14; }}
+        }}
+        """
+    else:
+        css_partikel = ""
     if tema_aplikasi == "light":
         lapisan_awal = "rgba(255, 255, 255, .20)"
         lapisan_akhir = "rgba(255, 255, 255, .28)"
@@ -403,6 +439,7 @@ if GAMBAR_LATAR is not None:
                 linear-gradient({lapisan_awal}, {lapisan_akhir}),
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
+        {css_partikel}
         .stApp,
         [data-testid="stAppViewContainer"] {{
             background-color: transparent;
@@ -605,11 +642,13 @@ if nav_primary == "Beranda":
                 st.markdown("## 📝")
         with kol_tentang:
             st.markdown(
-                "**ASISTEN KOREKSI URAIAN** adalah sebuah web berbasis **Python** "
-                "yang dibuat oleh **Tim Triboma** untuk mengikuti lomba "
-                "**Logicodix UNESA**. Web ini bertujuan untuk mempermudah guru "
-                "dalam menaruh nilai dan mengecek jawaban siswa secara mudah, "
-                "cepat, dan terstruktur."
+                "**ASISTEN KOREKSI URAIAN** adalah sebuah aplikasi berbasis **Python** "
+                "yang dikembangkan oleh **Tim Triboma** untuk berpartisipasi dalam "
+                "kompetisi **Logicodix UNESA**. Web ini dirancang khusus sebagai "
+                "solusi cerdas untuk mempermudah para guru dalam proses penilaian, "
+                "mulai dari menaruh nilai, mengelola rubrik berbobot, hingga "
+                "mengecek serta meninjau jawaban uraian siswa secara mudah, cepat, "
+                "dan terstruktur."
             )
     kol_kosong_kiri, kol_coba, kol_kosong_kanan = st.columns([1, 1, 1])
     with kol_coba:
