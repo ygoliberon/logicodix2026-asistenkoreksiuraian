@@ -21,13 +21,10 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
 
-# Memeriksa kutipan AI di jawaban siswa, dengan mengabaikan spasi
-# dan perbedaan huruf besar-kecil.
 def normalkan(teks):
     return re.sub(r"\s+", " ", str(teks)).strip().casefold()
 
 
-# Menentukan warna dan label lencana berdasarkan skor.
 def lencana_skor(skor):
     if skor >= 75:
         return "#16a34a", "Baik"
@@ -36,12 +33,8 @@ def lencana_skor(skor):
     return "#dc2626", "Perlu dicek"
 
 # FUNGSI UNTUK MENYIAPKAN, MENYIMPAN, DAN MEMBACA DATABASE.
-# Fitur akun: membuat akun, memeriksa kata sandi, dan memisahkan data tiap pengguna.
-
-# Menempatkan database di folder yang sama dengan file aplikasi
 DB_FILE = Path(__file__).with_name("koreksi.db")
 
-# Membuat tabel database jika belum tersedia
 def siapkan_database():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -96,15 +89,12 @@ def siapkan_database():
             conn.execute("ALTER TABLE detail_koreksi ADD COLUMN rincian_ai TEXT")
 
 
-# Hash password agar password asli tidak tersimpan di database.
-# Keamanan akun: simpan password sebagai hash PBKDF2 dengan salt acak, bukan teks asli.
 def hash_password(password, salt=None):
     salt = salt or secrets.token_bytes(16)
     hasil = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 310000)
     return salt.hex(), hasil.hex()
 
 
-# Membuat akun baru menggunakan alamat email sebagai nama login.
 def buat_akun(email, password):
     email = email.strip().casefold()
     salt, password_hash = hash_password(password)
@@ -119,8 +109,6 @@ def buat_akun(email, password):
         return None, "Email tersebut sudah terdaftar."
 
 
-# Memeriksa email dan password tanpa mengungkap mana yang salah.
-# Mengecek apakah email sudah terdaftar untuk menampilkan pesan login yang sesuai.
 def akun_terdaftar(email):
     with sqlite3.connect(DB_FILE) as conn:
         row = conn.execute(
@@ -148,7 +136,6 @@ def autentikasi(email, password):
     return {"id": row[0], "email": row[1]}
 
 
-# Menyimpan satu lembar koreksi di bawah akun yang sedang login.
 def simpan_koreksi(user_id, metadata, hasil, skor_final, nilai_akhir):
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -186,7 +173,6 @@ def simpan_koreksi(user_id, metadata, hasil, skor_final, nilai_akhir):
     return id_koreksi
 
 
-# Menampilkan hanya 20 hasil koreksi terakhir milik akun yang sedang login.
 def ambil_riwayat(user_id):
     if user_id is None:
         return []
@@ -211,7 +197,7 @@ def ambil_riwayat(user_id):
         for row in baris
     ]
 
-# Menghitung nilai tertimbang dari komponen rubrik yang dikembalikan AI.
+
 def hitung_skor_rubrik(rincian_ai, rubrik):
     if not isinstance(rincian_ai, list):
         raise ValueError("AI tidak mengembalikan rincian rubrik.")
@@ -238,11 +224,8 @@ def hitung_skor_rubrik(rincian_ai, rubrik):
     return skor_akhir, rincian
 
 
-# Mengubah foto menjadi data URL agar bisa dikirim ke model vision.
 def gambar_ke_data_url(gambar):
     tipe_gambar = gambar.type or ""
-
-    # Jika browser tidak memberi tipe MIME, tebak dari ekstensi file.
     if tipe_gambar not in {"image/jpeg", "image/png", "image/webp"}:
         tipe_tebakan, _ = mimetypes.guess_type(gambar.name)
         tipe_gambar = tipe_tebakan or tipe_gambar
@@ -256,7 +239,7 @@ def gambar_ke_data_url(gambar):
     data_base64 = base64.b64encode(gambar.getvalue()).decode("utf-8")
     return f"data:{tipe_gambar};base64,{data_base64}"
 
-# Mengirim permintaan ke OpenRouter dan mengambil teks jawaban model.
+
 def minta_openrouter(api_key, model, konten):
     response = requests.post(
         OPENROUTER_URL,
@@ -291,16 +274,16 @@ def minta_openrouter(api_key, model, konten):
 
     return re.sub(r"^```(?:json)?\s*|\s*```$", "", isi.strip())
 
+
 st.set_page_config(
     page_title="Asisten Koreksi Uraian",
     page_icon="📝",
     layout="centered",
 )
 
-# Memastikan tabel database siap sebelum aplikasi digunakan
 siapkan_database()
 
-# Fitur tampilan: tema ungu, kartu, lencana skor, dan header responsif.
+# Styling CSS global dengan garis luar kontainer 3px dan divider putih transparan 20%
 st.markdown(
     """
 <style>
@@ -340,7 +323,11 @@ hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
     border-radius: 2px !important;
 }
 
-@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
+@media(max-width:700px) { 
+    .block-container { padding:1.2rem .8rem 3rem; } 
+    .hero { padding:1.45rem 1.25rem; border-radius:17px; } 
+    .hero p { font-size:.92rem; } 
+}
 </style>
 <div class="hero">
   <span class="hero-kicker">Asisten guru · penilaian uraian</span>
@@ -352,7 +339,7 @@ hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
     unsafe_allow_html=True,
 )
 
-# Fitur wallpaper: membaca gambar JPG, PNG, atau WebP dari folder "bahan_gambar".
+# Fitur wallpaper otomatis (mendukung background_terang.jpg / file gambar lain di folder bahan_gambar)
 FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
 GAMBAR_LATAR = next(
     (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
@@ -403,7 +390,6 @@ if GAMBAR_LATAR is not None:
         unsafe_allow_html=True,
     )
 
-# Fitur login/daftar: pengguna boleh mencoba koreksi, lalu masuk untuk menyimpan hasil.
 st.session_state.setdefault("auth_mode", None)
 akun_aktif = st.session_state.get("akun_aktif")
 
@@ -475,27 +461,12 @@ if not akun_aktif and st.session_state.get("auth_mode"):
             st.session_state["auth_mode"] = None
             st.rerun()
 
-# Panel samping: pengaturan dan petunjuk singkat.
 with st.sidebar:
     st.header("Pengaturan")
-    jumlah_soal = st.number_input(
-        "Jumlah soal",
-        min_value=1,
-        max_value=10,
-        value=2,
-        step=1,
-    )
-
-    jumlah_siswa = st.number_input(
-        "Jumlah siswa yang akan diproses",
-        min_value=1,
-        max_value=36,
-        value=1,
-        step=1,
-    )
+    jumlah_soal = st.number_input("Jumlah soal", min_value=1, max_value=10, value=2, step=1)
+    jumlah_siswa = st.number_input("Jumlah siswa yang akan diproses", min_value=1, max_value=36, value=1, step=1)
 
     st.divider()
-    # Fitur rubrik kustom: guru mengatur nama komponen dan bobot penilaiannya.
     st.subheader("Rubrik berbobot")
     st.caption("Atur komponen dan bobotnya. Jumlah bobot aktif harus 100%.")
     nama_default = ["Pemahaman konsep", "Ketepatan isi", "Logika dan kelengkapan", "Tata bahasa dan kejelasan"]
@@ -506,14 +477,9 @@ with st.sidebar:
     for idx in range(4):
         kol_nama, kol_bobot = st.columns([2, 1])
         with kol_nama:
-            nama_kriteria = st.text_input(
-                f"Komponen {idx + 1}", value=nama_default[idx], key=f"rubrik_nama_{idx + 1}"
-            ).strip()
+            nama_kriteria = st.text_input(f"Komponen {idx + 1}", value=nama_default[idx], key=f"rubrik_nama_{idx + 1}").strip()
         with kol_bobot:
-            bobot_kriteria = st.number_input(
-                "Bobot %", min_value=0, max_value=100, value=bobot_default[idx],
-                step=5, key=f"rubrik_bobot_{idx + 1}"
-            )
+            bobot_kriteria = st.number_input("Bobot %", min_value=0, max_value=100, value=bobot_default[idx], step=5, key=f"rubrik_bobot_{idx + 1}")
         if bobot_kriteria > 0:
             if not nama_kriteria:
                 rubrik_invalid = True
@@ -538,45 +504,22 @@ with st.sidebar:
     )
     st.caption(f"Model: {MODEL}")
 
-# Menyimpan soal dan acuan yang dibuat satu kali untuk seluruh siswa.
 daftar_soal = []
-
 st.subheader("1. Masukkan soal dan acuan")
 
-# Informasi tugas yang berlaku untuk seluruh siswa.
 nama_guru = st.text_input("Nama guru", key="nama_guru")
 mapel = st.text_input("Mata pelajaran", key="mapel")
 nama_tugas = st.text_input("Nama tugas atau ulangan", key="nama_tugas")
 
-# Guru mengisi setiap soal dan acuannya satu kali.
 for nomor in range(1, int(jumlah_soal) + 1):
     with st.container(border=True):
         st.markdown(f"**Soal {nomor}**")
-
         kol_soal, kol_acuan = st.columns(2)
-
         with kol_soal:
-            soal = st.text_area(
-                f"Teks soal {nomor}",
-                key=f"soal_{nomor}",
-                height=130,
-            )
-
+            soal = st.text_area(f"Teks soal {nomor}", key=f"soal_{nomor}", height=130)
         with kol_acuan:
-            acuan = st.text_area(
-                f"Kunci jawaban atau acuan soal {nomor}",
-                key=f"acuan_{nomor}",
-                height=130,
-                help="Isi jawaban acuan atau informasi yang membantu penilaian.",
-            )
-
-        daftar_soal.append(
-            {
-                "nomor": nomor,
-                "soal": soal,
-                "acuan": acuan,
-            }
-        )
+            acuan = st.text_area(f"Kunci jawaban atau acuan soal {nomor}", key=f"acuan_{nomor}", height=130, help="Isi jawaban acuan atau informasi yang membantu penilaian.")
+        daftar_soal.append({"nomor": nomor, "soal": soal, "acuan": acuan})
 
 st.divider()
 st.subheader("2. Masukkan foto lembar jawaban siswa")
@@ -585,7 +528,6 @@ st.caption(
     "lembar jawaban."
 )
 
-# Menyimpan nama opsional dan 1–3 foto untuk setiap siswa.
 daftar_siswa = []
 
 for nomor_siswa in range(1, int(jumlah_siswa) + 1):
@@ -599,7 +541,6 @@ for nomor_siswa in range(1, int(jumlah_siswa) + 1):
 
         foto_siswa = []
 
-        # Tiga slot foto per siswa. Setiap slot dapat memakai upload atau kamera.
         for nomor_lembar in range(1, 4):
             with st.expander(
                 f"Foto lembar {nomor_lembar}",
@@ -660,16 +601,12 @@ kirim = st.button(
 )
 
 
-# Memeriksa kelengkapan data dan mengirimkannya ke AI setelah tombol diklik.
 if kirim:
     st.session_state.pop("siswa_tersimpan", None)
     st.session_state.pop("hasil_penilaian_batch", None)
-
-    # Menghapus status simpan lama saat koreksi baru diminta
     st.session_state.pop("metadata_koreksi", None)
     st.session_state.pop("hasil_telah_disimpan", None)
 
-    # Memeriksa identitas tugas dan kelengkapan soal serta foto setiap siswa.
     ada_yang_kosong = (
         not nama_guru.strip()
         or not mapel.strip()
@@ -703,19 +640,16 @@ if kirim:
             "dan 10 MB untuk seluruh foto milik satu siswa."
         )
     else:
-        # Membaca API key dari Codespaces secret.
         api_key = os.getenv("OPENROUTER_API_KEY")
 
         if not api_key:
             st.error("API key belum terbaca. Periksa Codespaces secret.")
         else:
-            # Membaca nama dan jawaban dari 1–3 foto milik setiap siswa.
             hasil_ocr_semua_siswa = []
             nomor_soal_valid = {
                 soal["nomor"] for soal in daftar_soal
             }
 
-            # PROMPT OCR (versi baru): transkripsi apa adanya + penanda keraguan.
             instruksi_ocr = (
                 "Kamu adalah transkriber tulisan tangan siswa untuk pelajaran matematika. "
                 "Tugasmu HANYA menyalin apa yang tertulis. Kamu bukan penilai dan bukan "
@@ -792,7 +726,6 @@ if kirim:
                 for siswa in daftar_siswa:
                     konten_ocr = [{"type": "text", "text": instruksi_ocr}]
 
-                    # Melampirkan foto sesuai urutan lembar siswa.
                     for foto in siswa["foto"]:
                         konten_ocr.append(
                             {
@@ -818,7 +751,6 @@ if kirim:
                         konten_ocr,
                     )
 
-                    # Mengambil objek JSON pertama dari respons OCR.
                     awal_json = teks_ocr.find("{")
                     if awal_json == -1:
                         raise ValueError(
@@ -831,7 +763,7 @@ if kirim:
                     )
 
                     jawaban_ocr = {}
-                    ragu_ocr = {}  # BARU: penanda ragu per nomor soal
+                    ragu_ocr = {}
                     bagian_tidak_terpetakan = data_ocr.get(
                         "tidak_terpetakan", []
                     )
@@ -854,14 +786,11 @@ if kirim:
                             bagian_tidak_terpetakan.append(jawaban)
                             continue
 
-                        # Menggabungkan jawaban jika satu soal berlanjut
-                        # pada lembar lain.
                         if nomor in jawaban_ocr:
                             jawaban_ocr[nomor] += "\n" + teks_jawaban
                         else:
                             jawaban_ocr[nomor] = teks_jawaban
 
-                        # BARU: simpan penanda ragu dari OCR.
                         daftar_ragu = jawaban.get("ragu") or []
                         if isinstance(daftar_ragu, list):
                             ragu_ocr.setdefault(nomor, []).extend(
@@ -872,8 +801,6 @@ if kirim:
                         data_ocr.get("nama_siswa", "")
                     ).strip()
 
-                    # Jika nama dari foto kosong, pakai nama/kode manual
-                    # sebagai cadangan.
                     nama_siswa_akhir = (
                         nama_terbaca
                         or siswa["nama_manual"]
@@ -886,7 +813,7 @@ if kirim:
                             "nama_siswa": nama_siswa_akhir,
                             "nama_dari_ocr": nama_terbaca,
                             "jawaban": jawaban_ocr,
-                            "ragu": ragu_ocr,  # BARU
+                            "ragu": ragu_ocr,
                             "tidak_terpetakan": bagian_tidak_terpetakan,
                             "gambar_bytes": [
                                 foto["gambar"].getvalue()
@@ -905,14 +832,11 @@ if kirim:
                 st.error(f"Hasil OCR tidak dapat diproses: {error}")
                 st.stop()
 
-            # Memberi instruksi penilaian dan format jawaban kepada AI.
-            # Menilai jawaban OCR satu siswa demi satu siswa.
             hasil_batch = []
 
             with st.spinner("Menilai jawaban para siswa..."):
                 try:
                     for siswa_ocr in hasil_ocr_semua_siswa:
-                        # Memasangkan jawaban OCR dengan soal dan acuan guru.
                         data_soal_ai = []
 
                         for soal in daftar_soal:
@@ -924,14 +848,12 @@ if kirim:
                                     "jawaban": siswa_ocr["jawaban"].get(
                                         soal["nomor"], ""
                                     ),
-                                    # BARU: bagian yang diragukan OCR
                                     "ragu_ocr": siswa_ocr["ragu"].get(
                                         soal["nomor"], []
                                     ),
                                 }
                             )
 
-                        # Prompt penilaian hanya menerima teks, bukan foto.
                         prompt = f"""
                         Nilai jawaban siswa berdasarkan kelogisan dan ketepatan matematisnya.
 
@@ -984,7 +906,6 @@ if kirim:
                         {json.dumps(data_soal_ai, ensure_ascii=False)}
                         """
 
-                        # Permintaan kedua untuk siswa ini: penilaian teks.
                         teks_nilai = minta_openrouter(
                             api_key,
                             MODEL,
@@ -1044,7 +965,7 @@ if kirim:
                                     "alasan": str(item_nilai.get("alasan", "")),
                                     "jawaban": jawaban_asli,
                                     "jawaban_terbaca": jawaban_asli,
-                                    "ragu": siswa_ocr["ragu"].get(nomor, []),  # BARU
+                                    "ragu": siswa_ocr["ragu"].get(nomor, []),
                                     "sumber_foto": True,
                                     "gambar_bytes": siswa_ocr["gambar_bytes"],
                                     "soal": daftar_soal[nomor - 1]["soal"],
@@ -1083,8 +1004,6 @@ if kirim:
                             }
                         )
 
-                        # Menyimpan progres agar hasil siswa sebelumnya tidak hilang
-                        # jika permintaan untuk siswa berikutnya gagal.
                         st.session_state["hasil_penilaian_batch"] = list(
                             hasil_batch
                         )
@@ -1097,7 +1016,6 @@ if kirim:
                 except (ValueError, KeyError, IndexError, TypeError) as error:
                     st.error(f"Hasil penilaian tidak dapat diproses: {error}")
 
-# Menampilkan, meninjau, dan menyimpan hasil untuk setiap siswa.
 hasil_batch = st.session_state.get("hasil_penilaian_batch", [])
 
 if hasil_batch:
@@ -1191,7 +1109,6 @@ if hasil_batch:
                         "transkripsi. Periksa foto dan alasan penilaiannya."
                     )
 
-                # BARU: peringatan bagian yang diragukan OCR.
                 ragu_item = item.get("ragu", [])
                 if ragu_item:
                     baris_ragu = []
@@ -1309,7 +1226,6 @@ if hasil_batch:
 
         st.divider()
 
-    # Mengunduh rekap seluruh siswa yang sedang ditinjau.
     buffer = io.StringIO()
     penulis = csv.writer(buffer)
     penulis.writerows(baris_csv)
@@ -1322,7 +1238,6 @@ if hasil_batch:
         width="stretch",
     )
 
-# Fitur riwayat: tampilkan hasil milik akun yang sedang login saja.
 st.divider()
 st.subheader("Riwayat hasil tersimpan")
 if akun_aktif:
