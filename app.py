@@ -317,7 +317,7 @@ st.markdown(
 .chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border:1px solid rgba(245,158,11,.25); border-radius:12px; font-size:.92rem; }
 .alasan { background:rgba(127,127,127,.08); border:1px solid var(--border); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
 div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-color:rgba(202,173,245,.26); }
-[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,.84) !important; color:#f4f7fb !important; border:1px solid rgba(202,173,245,.36) !important; border-radius:11px; }
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border:1px solid rgba(202,173,245,.36) !important; border-radius:11px; }
 [data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
 [data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
 [data-testid="stFileUploader"] section { background:rgba(48,31,76,.62); border:1px dashed rgba(202,173,245,.4); border-radius:13px; }
@@ -368,7 +368,7 @@ if GAMBAR_LATAR is not None:
         [data-testid="stForm"] {{
             position: relative;
             overflow: hidden;
-            background: rgba(54, 34, 78, .78) !important;
+            background: rgba(54, 34, 78, .64) !important;
             border: 1px solid rgba(255, 255, 255, .48) !important;
             border-radius: 16px;
             box-shadow: 0 12px 36px rgba(12, 5, 25, .18);
