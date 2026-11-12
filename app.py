@@ -1,6 +1,3 @@
-import base64
-import mimetypes
-import sqlite3
 import csv
 import hashlib
 import hmac
@@ -316,7 +313,7 @@ st.markdown(
 .chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:12px; font-size:.92rem; }
 .chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 1px solid rgba(237, 235, 232, 0.4); border-radius:12px; font-size:.92rem; }
 .alasan { background:rgba(127,127,127,.08); border:1px solid var(--border); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
-div[data-testid="stVerticalBlockBorderWrapper"] { border-radius:16px; border-color: rgba(237, 235, 232, 0.4); }
+div[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 16px; border: 1px solid rgba(237, 235, 232, 0.4) !important; }
 [data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 1px solid rgba(237, 235, 232, 0.4) !important; border-radius:11px; }
 [data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
 [data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
