@@ -1549,7 +1549,7 @@ if hasil_batch:
 
     st.download_button(
         "⬇️ Unduh rekap semua siswa (CSV)",
-        data=buffer.getvalue(),python3 -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501
+        data=buffer.getvalue(),
         file_name="rekap_nilai_siswa.csv",
         mime="text/csv",
         width="stretch",
