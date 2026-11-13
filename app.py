@@ -292,7 +292,7 @@ def minta_openrouter(api_key, model, konten):
     return re.sub(r"^```(?:json)?\s*|\s*```$", "", isi.strip())
 
 st.set_page_config(
-    page_title="Asisten Koreksi Uraian",
+    page_title="Ruang Bantu Koreksi",
     page_icon="📝",
     layout="wide",
 )
@@ -667,23 +667,25 @@ if not akun_aktif and st.session_state.get("auth_mode"):
 # Beranda: informasi aplikasi dengan logo dan tombol Coba.
 if nav_primary == "Beranda":
     st.markdown('<h1 class="about-title">TENTANG</h1>', unsafe_allow_html=True)
-    with st.container(border=True):
-        kol_logo_about, kol_tentang = st.columns([1, 3])
-        with kol_logo_about:
-            if file_logo.is_file():
-                st.image(str(file_logo), width=260)
-            else:
-                st.markdown("## 📝")
-        with kol_tentang:
-            st.markdown(
-                "**ASISTEN KOREKSI URAIAN** adalah sebuah aplikasi berbasis **Python** "
-                "yang dikembangkan oleh **Tim Triboma** untuk berpartisipasi dalam "
-                "kompetisi **Logicodix UNESA**. Web ini dirancang khusus sebagai "
-                "solusi cerdas untuk mempermudah para guru dalam proses penilaian, "
-                "mulai dari menaruh nilai, mengelola rubrik berbobot, hingga "
-                "mengecek serta meninjau jawaban uraian siswa secara mudah, cepat, "
-                "dan terstruktur."
-            )
+    kol_about_sisi_kiri, kol_about_kartu, kol_about_sisi_kanan = st.columns([0.6, 8.8, 0.6])
+    with kol_about_kartu:
+        with st.container(border=True):
+            kol_logo_about, kol_tentang = st.columns([1, 3])
+            with kol_logo_about:
+                if file_logo.is_file():
+                    st.image(str(file_logo), width=220)
+                else:
+                    st.markdown("## 📝")
+            with kol_tentang:
+                st.markdown(
+                    "**RUANG BANTU KOREKSI** adalah sebuah aplikasi berbasis **Python** "
+                    "yang dikembangkan oleh **Tim Triboma** untuk berpartisipasi dalam "
+                    "kompetisi **Logicodix UNESA**. Web ini dirancang khusus sebagai "
+                    "solusi cerdas untuk mempermudah para guru dalam proses penilaian, "
+                    "mulai dari menaruh nilai, mengelola rubrik berbobot, hingga "
+                    "mengecek serta meninjau jawaban uraian siswa secara mudah, cepat, "
+                    "dan terstruktur."
+                )
     kol_kosong_kiri, kol_coba, kol_kosong_kanan = st.columns([1, 1, 1])
     with kol_coba:
         if st.button("Coba", type="primary", width="stretch", key="mulai_dari_beranda"):
@@ -704,7 +706,7 @@ if halaman_asisten == "History / Riwayat":
         st.info("Masuk atau buat akun untuk melihat riwayat hasil yang tersimpan.")
     st.stop()
 
-st.title("Asisten Koreksi Ujian")
+st.title("Ruang Bantu Koreksi — Koreksi Ujian")
 
 # Panel samping: pengaturan dan petunjuk singkat.
 with st.sidebar:
@@ -1547,7 +1549,7 @@ if hasil_batch:
 
     st.download_button(
         "⬇️ Unduh rekap semua siswa (CSV)",
-        data=buffer.getvalue(),
+        data=buffer.getvalue(),python3 -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501
         file_name="rekap_nilai_siswa.csv",
         mime="text/csv",
         width="stretch",
