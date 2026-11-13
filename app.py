@@ -389,76 +389,6 @@ if not GAMBAR_LATAR.is_file():
 if GAMBAR_LATAR is not None:
     tipe_gambar = mimetypes.guess_type(GAMBAR_LATAR.name)[0] or "image/jpeg"
     gambar_base64 = base64.b64encode(GAMBAR_LATAR.read_bytes()).decode("ascii")
-    FILE_PARTIKEL = FOLDER_GAMBAR_LATAR / "partikel.png"
-    if FILE_PARTIKEL.is_file():
-        tipe_partikel = mimetypes.guess_type(FILE_PARTIKEL.name)[0] or "image/png"
-        partikel_base64 = base64.b64encode(FILE_PARTIKEL.read_bytes()).decode("ascii")
-        css_partikel = f"""
-        .stApp {{ position: relative; isolation: isolate; }}
-        .stApp::before, .stApp::after {{
-            content: "";
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            background-image: url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}");
-            background-repeat: no-repeat, no-repeat, no-repeat;
-            will-change: opacity, background-position;
-        }}
-        .stApp::before {{
-            opacity: .02;
-            background-size: 126px 126px, 88px 88px, 104px 104px;
-            background-position: 12% 22%, 27% 73%, 68% 18%;
-            animation: partikel-melayang 3s ease-in-out 0s infinite,
-                       partikel-bergerak 12s ease-in-out infinite,
-                       partikel-gelombang 8s ease-in-out infinite;
-        }}
-        .stApp::after {{
-            opacity: .02;
-            background-size: 112px 112px, 92px 92px, 78px 78px;
-            background-position: 88% 76%, 74% 36%, 42% 55%;
-            animation: partikel-melayang-dua 3s ease-in-out -1.5s infinite,
-                       partikel-bergerak-dua 15s ease-in-out infinite,
-                       partikel-gelombang-dua 10s ease-in-out -4s infinite;
-        }}
-        .stApp > header, .stApp > div {{ position: relative; z-index: 1; }}
-        @keyframes partikel-melayang {{
-            0%, 100% {{ opacity: 0; }}
-            50% {{ opacity: 1; }}
-        }}
-        @keyframes partikel-melayang-dua {{
-            0%, 100% {{ opacity: 0; }}
-            50% {{ opacity: 1; }}
-        }}
-        @keyframes partikel-bergerak {{
-            0%, 100% {{ background-position: 12% 22%, 27% 73%, 68% 18%; }}
-            25% {{ background-position: 15% 18%, 30% 69%, 71% 22%; }}
-            50% {{ background-position: 17% 23%, 32% 77%, 72% 16%; }}
-            75% {{ background-position: 14% 27%, 29% 75%, 69% 14%; }}
-        }}
-        @keyframes partikel-bergerak-dua {{
-            0%, 100% {{ background-position: 88% 76%, 74% 36%, 42% 55%; }}
-            25% {{ background-position: 85% 72%, 71% 32%, 39% 59%; }}
-            50% {{ background-position: 82% 77%, 68% 39%, 36% 53%; }}
-            75% {{ background-position: 86% 80%, 72% 42%, 40% 50%; }}
-        }}
-        @keyframes partikel-gelombang {{
-            0%, 100% {{ transform: translate3d(0, 0, 0); }}
-            25% {{ transform: translate3d(12px, -16px, 0); }}
-            50% {{ transform: translate3d(22px, 3px, 0); }}
-            75% {{ transform: translate3d(10px, 17px, 0); }}
-        }}
-        @keyframes partikel-gelombang-dua {{
-            0%, 100% {{ transform: translate3d(0, 0, 0); }}
-            25% {{ transform: translate3d(-14px, 13px, 0); }}
-            50% {{ transform: translate3d(-24px, -4px, 0); }}
-            75% {{ transform: translate3d(-11px, -17px, 0); }}
-        }}
-        """
-    else:
-        css_partikel = ""
     if tema_aplikasi == "light":
         lapisan_awal = "rgba(255, 255, 255, .20)"
         lapisan_akhir = "rgba(255, 255, 255, .28)"
@@ -473,7 +403,6 @@ if GAMBAR_LATAR is not None:
                 linear-gradient({lapisan_awal}, {lapisan_akhir}),
                 url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
         }}
-        {css_partikel}
         .stApp,
         [data-testid="stAppViewContainer"] {{
             background-color: transparent;
@@ -557,6 +486,42 @@ if tema_aplikasi == "light":
             color: #392447 !important;
             border-color: rgba(141, 101, 160, .40) !important;
         }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# Gunakan artwork sebagai latar bingkai kartu saat tema gelap aktif.
+FILE_BACK_DARK = FOLDER_GAMBAR_LATAR / "back_dark.png"
+if tema_aplikasi == "dark" and FILE_BACK_DARK.is_file():
+    tipe_back_dark = mimetypes.guess_type(FILE_BACK_DARK.name)[0] or "image/png"
+    back_dark_base64 = base64.b64encode(FILE_BACK_DARK.read_bytes()).decode("ascii")
+    st.markdown(
+        f"""
+        <style>
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            position: relative !important;
+            isolation: isolate;
+            overflow: hidden;
+            border: 0 !important;
+            border-radius: 16px !important;
+            background: transparent !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]::before {{
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: url("data:{tipe_back_dark};base64,{back_dark_base64}") center / 100% 100% no-repeat;
+            border-radius: inherit;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {{
+            position: relative;
+            z-index: 1;
+            background: transparent !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
