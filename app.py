@@ -395,32 +395,66 @@ if GAMBAR_LATAR is not None:
         partikel_base64 = base64.b64encode(FILE_PARTIKEL.read_bytes()).decode("ascii")
         css_partikel = f"""
         .stApp {{ position: relative; isolation: isolate; }}
-        .stApp::before {{
+        .stApp::before, .stApp::after {{
             content: "";
             position: fixed;
             inset: 0;
             z-index: 0;
             pointer-events: none;
-            opacity: .05;
-            background-image: url("data:{tipe_partikel};base64,{partikel_base64}");
-            background-size: 150px 150px;
-            background-repeat: repeat;
-            animation: partikel-melayang 9s ease-in-out infinite,
-                       partikel-bergerak 34s linear infinite;
+            background-image: url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}");
+            background-repeat: no-repeat, no-repeat, no-repeat;
             will-change: opacity, background-position;
+        }}
+        .stApp::before {{
+            opacity: .02;
+            background-size: 126px 126px, 88px 88px, 104px 104px;
+            background-position: 12% 22%, 27% 73%, 68% 18%;
+            animation: partikel-melayang 3s ease-in-out 0s infinite,
+                       partikel-bergerak 12s ease-in-out infinite,
+                       partikel-gelombang 8s ease-in-out infinite;
+        }}
+        .stApp::after {{
+            opacity: .02;
+            background-size: 112px 112px, 92px 92px, 78px 78px;
+            background-position: 88% 76%, 74% 36%, 42% 55%;
+            animation: partikel-melayang-dua 3s ease-in-out -1.5s infinite,
+                       partikel-bergerak-dua 15s ease-in-out infinite,
+                       partikel-gelombang-dua 10s ease-in-out -4s infinite;
         }}
         .stApp > header, .stApp > div {{ position: relative; z-index: 1; }}
         @keyframes partikel-melayang {{
-            0%, 100% {{ opacity: .04; }}
-            45% {{ opacity: .30; }}
-            70% {{ opacity: .12; }}
+            0%, 100% {{ opacity: 0; }}
+            50% {{ opacity: 1; }}
+        }}
+        @keyframes partikel-melayang-dua {{
+            0%, 100% {{ opacity: 0; }}
+            50% {{ opacity: 1; }}
         }}
         @keyframes partikel-bergerak {{
-            from {{ background-position: 0 0; }}
-            to {{ background-position: 150px -300px; }}
+            0%, 100% {{ background-position: 12% 22%, 27% 73%, 68% 18%; }}
+            25% {{ background-position: 15% 18%, 30% 69%, 71% 22%; }}
+            50% {{ background-position: 17% 23%, 32% 77%, 72% 16%; }}
+            75% {{ background-position: 14% 27%, 29% 75%, 69% 14%; }}
         }}
-        @media (prefers-reduced-motion: reduce) {{
-            .stApp::before {{ animation: none; opacity: .14; }}
+        @keyframes partikel-bergerak-dua {{
+            0%, 100% {{ background-position: 88% 76%, 74% 36%, 42% 55%; }}
+            25% {{ background-position: 85% 72%, 71% 32%, 39% 59%; }}
+            50% {{ background-position: 82% 77%, 68% 39%, 36% 53%; }}
+            75% {{ background-position: 86% 80%, 72% 42%, 40% 50%; }}
+        }}
+        @keyframes partikel-gelombang {{
+            0%, 100% {{ transform: translate3d(0, 0, 0); }}
+            25% {{ transform: translate3d(12px, -16px, 0); }}
+            50% {{ transform: translate3d(22px, 3px, 0); }}
+            75% {{ transform: translate3d(10px, 17px, 0); }}
+        }}
+        @keyframes partikel-gelombang-dua {{
+            0%, 100% {{ transform: translate3d(0, 0, 0); }}
+            25% {{ transform: translate3d(-14px, 13px, 0); }}
+            50% {{ transform: translate3d(-24px, -4px, 0); }}
+            75% {{ transform: translate3d(-11px, -17px, 0); }}
         }}
         """
     else:
@@ -632,7 +666,7 @@ if not akun_aktif and st.session_state.get("auth_mode"):
 
 # Beranda: informasi aplikasi dengan logo dan tombol Coba.
 if nav_primary == "Beranda":
-    st.markdown('<h1 class="about-title">ABOUT</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="about-title">TENTANG</h1>', unsafe_allow_html=True)
     with st.container(border=True):
         kol_logo_about, kol_tentang = st.columns([1, 3])
         with kol_logo_about:
