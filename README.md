@@ -128,31 +128,16 @@ Database lokal `koreksi.db` berisi akun, ringkasan koreksi, dan rincian nilai pe
    python -m streamlit run app.py
    ```
 
-   Jika file utama pada salinan proyek bernama lain, ganti `app.py` dengan nama file tersebut.
-
-## Konfigurasi deployment
-
-### Streamlit Community Cloud
-
-1. Hubungkan repositori GitHub dan pilih branch serta file utama `app.py`.
-2. Pada pengaturan aplikasi, buka **Settings → Secrets**.
-3. Tambahkan secret dalam format TOML berikut:
-
-   ```toml
-   OPENROUTER_API_KEY = "isi_dengan_api_key_anda"
-   ```
-
-4. Deploy atau reboot aplikasi setelah menyimpan secret.
-
-Untuk Codespaces, nama secret yang dibaca aplikasi adalah `OPENROUTER_API_KEY`. Setelah mengubah secret, mulai ulang Codespace agar environment memuat nilai terbaru.
-
 ### Catatan penyimpanan database
 
 Aplikasi membuat `koreksi.db` di direktori yang sama dengan file utama. SQLite cocok untuk prototipe dan demonstrasi. Penyimpanan lokal pada layanan hosting seperti Streamlit Community Cloud tidak dijamin bertahan setelah aplikasi dihentikan, dibangun ulang, atau dipindahkan. Untuk penggunaan nyata dengan banyak guru, pindahkan data ke layanan database terkelola dan siapkan pencadangan sebelum menyimpan data siswa secara berkelanjutan.
 
 ## Akun demo
 
-Aplikasi tidak menyediakan akun demo bawaan. Pilih **Buat akun** pada aplikasi untuk mendaftarkan akun baru. Jika panitia memerlukan akun demo, tim dapat membuat akun khusus demonstrasi dan mencantumkan kredensialnya di sini setelah memastikan akun tersebut tidak berisi data pribadi.
+Aplikasi bisa dicoba tanpa akun namun tidak bisa melihat riwayat koreksi.
+Jika ingin menggunakan akun, silahkan gunakan akun demo berikut: 
+- **Username:** 
+- **Password:**
 
 ## Penggunaan AI
 
@@ -170,15 +155,5 @@ AI digunakan untuk dua tugas yang terpisah:
 - **OpenRouter:** layanan perantara API model, [openrouter.ai](https://openrouter.ai/).
 - **NVIDIA Nemotron 3.5 Super VL:** model yang dipakai untuk transkripsi gambar. Lihat halaman model dan lisensi/ketentuannya di katalog OpenRouter sebelum distribusi.
 - **NVIDIA Nemotron 3 Ultra:** model yang dipakai untuk saran penilaian teks. Lihat halaman model dan lisensi/ketentuannya di katalog OpenRouter sebelum distribusi.
-- **Aset pada `bahan_gambar/`:** `background.jpg`, `background_terang.jpg`, `element.png`, dan `logo.png`. **Lengkapi sumber, pembuat, dan lisensi masing-masing aset.** Jika dibuat sendiri oleh tim, tulis “Dibuat oleh Tim Triboma”; jika diambil dari pihak lain, cantumkan URL sumber dan lisensi.
-- **Dataset:** aplikasi tidak menyertakan dataset pelatihan. Foto contoh yang digunakan saat demonstrasi harus memiliki izin pemiliknya dan tidak boleh diunggah sebagai data publik tanpa persetujuan.
-
-Dependensi Python yang tercantum pada `requirements.txt` mengikuti lisensi masing-masing proyek upstream. Jika menambahkan template, kode, data, ikon, font, atau aset pihak ketiga, cantumkan sumber dan lisensinya pada bagian ini.
-
-## Batasan yang diketahui
-
-- Hasil OCR tulisan tangan dapat keliru, khususnya pada angka, pecahan, satuan, dan tulisan yang dicoret.
-- Saran nilai AI tidak selalu konsisten dan bukan pengganti penilaian guru.
-- Model gratis dapat terkena rate limit atau tidak tersedia sementara.
-- SQLite dan penyimpanan lokal kurang sesuai untuk penggunaan multi-pengguna berskala besar atau penyimpanan produksi.
-- Aplikasi perlu koneksi internet untuk memanggil OpenRouter.
+- **Aset pada `bahan_gambar/`:** `background.jpg`, `background_terang.jpg`, `element.png`, dan `logo.png` dibuat oleh Tim Triboma menggunakan Canva
+- **Dataset:** Soal ujian, kunci jawaban dan Foto lembar siswa bisa mengggunakan file yang ada di folder sample_uji_coba
