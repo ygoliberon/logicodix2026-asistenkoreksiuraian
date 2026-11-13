@@ -492,35 +492,117 @@ if tema_aplikasi == "light":
     )
 
 
-# Gunakan artwork sebagai latar bingkai kartu saat tema gelap aktif.
-FILE_BACK_DARK = FOLDER_GAMBAR_LATAR / "back_dark.png"
-if tema_aplikasi == "dark" and FILE_BACK_DARK.is_file():
-    tipe_back_dark = mimetypes.guess_type(FILE_BACK_DARK.name)[0] or "image/png"
-    back_dark_base64 = base64.b64encode(FILE_BACK_DARK.read_bytes()).decode("ascii")
+# Artwork menggantikan garis bingkai kartu, mengikuti tema yang aktif.
+NAMA_BINGKAI = "back_light.png" if tema_aplikasi == "light" else "back_dark.png"
+FILE_BINGKAI = FOLDER_GAMBAR_LATAR / NAMA_BINGKAI
+WARNA_GARIS_BINGKAI = "#eee9f0" if tema_aplikasi == "light" else "#4c1d95"
+if FILE_BINGKAI.is_file():
+    tipe_bingkai = mimetypes.guess_type(FILE_BINGKAI.name)[0] or "image/png"
+    bingkai_base64 = base64.b64encode(FILE_BINGKAI.read_bytes()).decode("ascii")
+    css_bingkai = f"""
+    <style>
+    div[class*="st-key-student_card_"],
+    div[class*="st-key-question_card_"],
+    div[class*="st-key-about_card"],
+    div[class*="st-key-auth_card"] {{
+        border: 3px solid {WARNA_GARIS_BINGKAI} !important;
+        outline: 0 !important;
+        box-shadow: none !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        background: url("data:{tipe_bingkai};base64,{bingkai_base64}") center / 100% 100% no-repeat !important;
+    }}
+    div[class*="st-key-student_card_"] [data-testid="stVerticalBlockBorderWrapper"],
+    div[class*="st-key-student_card_"] [data-testid="stVerticalBlock"],
+    div[class*="st-key-question_card_"] [data-testid="stVerticalBlockBorderWrapper"],
+    div[class*="st-key-question_card_"] [data-testid="stVerticalBlock"],
+    div[class*="st-key-about_card"] [data-testid="stVerticalBlockBorderWrapper"],
+    div[class*="st-key-about_card"] [data-testid="stVerticalBlock"],
+    div[class*="st-key-auth_card"] [data-testid="stVerticalBlockBorderWrapper"],
+    div[class*="st-key-auth_card"] [data-testid="stVerticalBlock"] {{
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }}
+    </style>
+    """
+    st.markdown(css_bingkai, unsafe_allow_html=True)
+elif tema_aplikasi == "dark":
+    # Sembunyikan outline putih jika gambar bingkai belum terbaca.
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+            border: 0 !important;
+            outline: 0 !important;
+            box-shadow: none !important;
+            border-radius: 16px !important;
+            background: rgba(57, 25, 88, .78) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Dekorasi partikel mengambang pada wallpaper tema gelap.
+FILE_PARTIKEL = FOLDER_GAMBAR_LATAR / "partikel.png"
+if FILE_PARTIKEL.is_file():
+    tipe_partikel = mimetypes.guess_type(FILE_PARTIKEL.name)[0] or "image/png"
+    partikel_base64 = base64.b64encode(FILE_PARTIKEL.read_bytes()).decode("ascii")
     st.markdown(
         f"""
         <style>
-        div[data-testid="stVerticalBlockBorderWrapper"] {{
-            position: relative !important;
-            isolation: isolate;
-            overflow: hidden;
-            border: 0 !important;
-            border-radius: 16px !important;
-            background: transparent !important;
-        }}
-        div[data-testid="stVerticalBlockBorderWrapper"]::before {{
+        .stApp {{ position: relative; isolation: isolate; }}
+        .stApp::before, .stApp::after {{
             content: "";
-            position: absolute;
+            position: fixed;
             inset: 0;
             z-index: 0;
             pointer-events: none;
-            background: url("data:{tipe_back_dark};base64,{back_dark_base64}") center / 100% 100% no-repeat;
-            border-radius: inherit;
+            background-image: url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}"),
+                              url("data:{tipe_partikel};base64,{partikel_base64}");
+            background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+            will-change: opacity, background-position, transform;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"] > div {{
-            position: relative;
-            z-index: 1;
-            background: transparent !important;
+        .stApp::before {{
+            opacity: 0;
+            background-size: 126px 126px, 88px 88px, 104px 104px, 74px 74px, 64px 64px;
+            background-position: 12% 22%, 27% 73%, 68% 18%, 82% 79%, 47% 48%;
+            animation: partikel-fade-satu 3s ease-in-out infinite,
+                       partikel-ombak-satu 8s ease-in-out infinite;
+        }}
+        .stApp::after {{
+            opacity: 0;
+            background-size: 112px 112px, 92px 92px, 78px 78px, 70px 70px, 56px 56px;
+            background-position: 88% 76%, 74% 36%, 42% 55%, 16% 48%, 57% 84%;
+            animation: partikel-fade-dua 3s ease-in-out -1.5s infinite,
+                       partikel-ombak-dua 10s ease-in-out -4s infinite;
+        }}
+        .stApp > header, .stApp > div {{ position: relative; z-index: 1; }}
+        @keyframes partikel-fade-satu {{
+            0%, 100% {{ opacity: 0; }}
+            50% {{ opacity: 1; }}
+        }}
+        @keyframes partikel-fade-dua {{
+            0%, 100% {{ opacity: 0; }}
+            50% {{ opacity: 1; }}
+        }}
+        @keyframes partikel-ombak-satu {{
+            0%, 100% {{ transform: translate3d(0, 0, 0); }}
+            25% {{ transform: translate3d(12px, -16px, 0); }}
+            50% {{ transform: translate3d(22px, 3px, 0); }}
+            75% {{ transform: translate3d(10px, 17px, 0); }}
+        }}
+        @keyframes partikel-ombak-dua {{
+            0%, 100% {{ transform: translate3d(0, 0, 0); }}
+            25% {{ transform: translate3d(-14px, 13px, 0); }}
+            50% {{ transform: translate3d(-24px, -4px, 0); }}
+            75% {{ transform: translate3d(-11px, -17px, 0); }}
         }}
         </style>
         """,
@@ -583,7 +665,7 @@ with kol_akun:
 st.divider()
 
 if not akun_aktif and st.session_state.get("auth_mode"):
-    with st.container(border=True):
+    with st.container(border=True, key="auth_card"):
         mode_akun = st.session_state["auth_mode"]
         st.subheader("Masuk ke akun" if mode_akun == "masuk" else "Buat akun baru")
         if mode_akun == "masuk":
@@ -634,7 +716,7 @@ if nav_primary == "Beranda":
     st.markdown('<h1 class="about-title">TENTANG</h1>', unsafe_allow_html=True)
     kol_about_sisi_kiri, kol_about_kartu, kol_about_sisi_kanan = st.columns([0.6, 8.8, 0.6])
     with kol_about_kartu:
-        with st.container(border=True):
+        with st.container(border=True, key="about_card"):
             kol_logo_about, kol_tentang = st.columns([1, 3])
             with kol_logo_about:
                 if file_logo.is_file():
@@ -748,7 +830,7 @@ nama_tugas = st.text_input("Nama tugas atau ulangan", key="nama_tugas")
 
 # Guru mengisi setiap soal dan acuannya satu kali.
 for nomor in range(1, int(jumlah_soal) + 1):
-    with st.container(border=True):
+    with st.container(border=True, key=f"question_card_{nomor}"):
         st.markdown(f"**Soal {nomor}**")
 
         kol_soal, kol_acuan = st.columns(2)
@@ -787,7 +869,7 @@ st.caption(
 daftar_siswa = []
 
 for nomor_siswa in range(1, int(jumlah_siswa) + 1):
-    with st.container(border=True):
+    with st.container(border=True, key=f"student_card_{nomor_siswa}"):
         st.markdown(f"### Siswa {nomor_siswa}")
 
         nama_manual = st.text_input(
