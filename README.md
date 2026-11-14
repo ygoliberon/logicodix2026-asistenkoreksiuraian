@@ -53,9 +53,9 @@ Model gratis dapat mengalami pembatasan atau perubahan ketersediaan dari penyedi
 flowchart LR
     G[Guru] -->|Soal, acuan, rubrik, foto| W[Web Streamlit]
     W -->|Foto siswa| V[Orvix/Qwen: model vision]
-    V -->|Transkripsi per nomor soal| W
+    V -->|Transkripsi per<br/>nomor soal| W
     W -->|Transkripsi + soal + acuan + rubrik| L[OpenRouter/Nvidia Nemotron: model penilaian]
-    L -->|Skor usulan, bukti, alasan| W
+    L -->|Skor usulan,<br/>bukti, alasan| W
     W -->|Tinjau dan setujui| G
     G -->|Nilai yang disetujui| W
     W -->|Akun, hasil, rincian nilai| D[(SQLite: koreksi.db)]
