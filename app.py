@@ -536,9 +536,9 @@ if nav_primary == "Beranda":
                     st.markdown("## 📝")
             with kol_tentang:
                 st.markdown(
-                    "**RUANG BANTU KOREKSI** adalah sebuah aplikasi berbasis **Python** "
+                    "**RUANG BANTU KOREKSI** adalah sebuah aplikasi web"
                     "yang dikembangkan oleh **Tim Triboma** untuk berpartisipasi dalam "
-                    "kompetisi **Logicodix UNESA**. Web ini dirancang khusus sebagai "
+                    "kompetisi **Logicodix UNESA**. Aplikasi ini dirancang khusus sebagai "
                     "solusi cerdas untuk mempermudah para guru dalam proses penilaian, "
                     "mulai dari menaruh nilai, mengelola rubrik berbobot, hingga "
                     "mengecek serta meninjau jawaban uraian siswa secara mudah, cepat, "
