@@ -350,328 +350,75 @@ except (AttributeError, RuntimeError):
 if tema_aplikasi not in {"light", "dark"}:
     tema_aplikasi = "dark"
 
-# Fitur tampilan: tema ungu, kartu, lencana skor, dan header responsif.
-st.markdown(
-    """
-    <style>
-    html, body, #root {
-        height: 100%;
-        overflow: hidden;
-    }
-
-    [data-testid="stAppViewContainer"] {
-        height: 100vh;
-        overflow: hidden;
-    }
-
-    [data-testid="stMain"] {
-        height: 100vh;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-<style>
-:root { --accent:#6256e8; --border: 3px solid rgba(230, 234, 241, 0.27); }
-.block-container { max-width:1480px; padding:1.2rem 2rem 4rem; }
-div[data-testid="stSegmentedControl"] {
-    border-radius: 999px;
-    padding: .2rem;
-}
-div[data-testid="stSegmentedControl"] button {
-    border-radius: 999px !important;
-    font-weight: 700;
-}
-div[data-testid="stSelectbox"] > div {
-    border-radius: 12px;
-}
-.about-title { text-align:center; font-size:clamp(2.7rem,7vw,5rem); font-style:italic; font-weight:900; letter-spacing:.04em; margin:1rem 0 3rem; color:#f5eaff; }
-.st-key-nav_beranda button, .st-key-nav_masuk button, .st-key-nav_daftar button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
-.st-key-nav_beranda button:hover, .st-key-nav_masuk button:hover { color:#d9b5ff !important; }
-.st-key-nav_daftar button { border:1px solid rgba(255,255,255,.55) !important; border-radius:999px !important; }
-div[data-testid="stPopover"] > button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
-div[data-testid="stPopoverBody"] { background:rgba(48,31,76,.92) !important; backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.2); border-radius:16px; }
-.hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4c1d95 0%,#6d35c9 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(91,33,182,.28); }
-.hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
-.hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
-.hero p { color:#ede9fe; margin:.55rem 0 0; max-width:650px; font-size:1rem; line-height:1.6; position:relative; z-index:1; }
-.hero-kicker { display:inline-block; margin-bottom:.7rem; padding:.28rem .65rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:999px; color:#f5f3ff; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-.badge { display:inline-block; color:#fff; font-weight:700; padding:.3rem .8rem; border-radius:999px; font-size:.86rem; }
-.skor-besar { font-size:2.2rem; font-weight:800; line-height:1; }
-.chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
-.chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
-.alasan { background:rgba(127,127,127,.08); border: 3px solid rgba(230, 234, 241, 0.27); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
-
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 3px solid rgba(230, 234, 241, 0.27) !important;
-    border-radius: 16px !important;
-}
-
-[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 3px solid rgba(230, 234, 241, 0.27) !important; border-radius:11px; }
-[data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
-[data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
-[data-testid="stFileUploader"] section { background:rgba(0, 0, 0, 0.55); border: 3px solid rgba(230, 234, 241, 0.27); border-radius:13px; }
-[data-testid="stFileUploader"] section, [data-testid="stFileUploader"] section * { color:#f3eaff; }
-[data-testid="stCameraInput"] button { background:rgba(69,43,105,.86); color:#f4f7fb; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:10px; }
-.stButton>button, .stFormSubmitButton>button { min-height:2.8rem; border-radius:12px; font-weight:650; padding:.6rem 1.05rem; transition:transform .15s ease, box-shadow .15s ease; }
-.stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(139,92,246,.22); }
-[data-testid="stSidebar"] { border: 3px solid rgba(230, 234, 241, 0.27); }
-[data-testid="stAlert"] { border-radius:12px; }
-
-hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    border: none !important;
-    height: 3px !important;
-    border-radius: 2px !important;
-}
-
-@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-# Pilih wallpaper sesuai tema dari folder "bahan_gambar".
+# Fitur tampilan: seluruh aturan CSS ada di style.css.
+# Bagian ini hanya mengirim nilai yang bergantung pada tema dan file gambar
+# (wallpaper, bingkai, partikel) sebagai variabel CSS, lalu memuat style.css.
 FOLDER_GAMBAR_LATAR = Path(__file__).with_name("bahan_gambar")
-NAMA_WALLPAPER = (
-    "background_terang.jpg" if tema_aplikasi == "light" else "background.jpg"
-)
-GAMBAR_LATAR = FOLDER_GAMBAR_LATAR / NAMA_WALLPAPER
-if not GAMBAR_LATAR.is_file():
-    GAMBAR_LATAR = FOLDER_GAMBAR_LATAR / "background.jpg"
-if not GAMBAR_LATAR.is_file():
-    GAMBAR_LATAR = next(
-        (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
-         if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
-        None,
-    )
-if GAMBAR_LATAR is not None:
-    tipe_gambar = mimetypes.guess_type(GAMBAR_LATAR.name)[0] or "image/jpeg"
-    gambar_base64 = base64.b64encode(GAMBAR_LATAR.read_bytes()).decode("ascii")
-    if tema_aplikasi == "light":
-        lapisan_awal = "rgba(255, 255, 255, .20)"
-        lapisan_akhir = "rgba(255, 255, 255, .28)"
-    else:
-        lapisan_awal = "rgba(34, 15, 57, .48)"
-        lapisan_akhir = "rgba(34, 15, 57, .64)"
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background:
-                linear-gradient({lapisan_awal}, {lapisan_akhir}),
-                url("data:{tipe_gambar};base64,{gambar_base64}") center / cover fixed no-repeat;
-        }}
-        .stApp,
-        [data-testid="stAppViewContainer"] {{
-            background-color: transparent;
-            filter: none !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-        }}
-        div[data-testid="stVerticalBlockBorderWrapper"] {{
-            border: 3px solid rgba(230, 234, 241, 0.27) !important;
-            border-radius: 16px !important;
-        }}
-        [data-testid="stTextArea"] textarea,
-        [data-testid="stTextInput"] input,
-        [data-testid="stNumberInput"] input {{
-            background: rgba(48, 31, 76, 1) !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-        }}
-        [data-testid="stSidebar"] > div:first-child {{
-            background: rgba(31, 19, 49, .94);
-        }}
-        [data-testid="stHeader"] {{ background: rgba(0, 0, 0, 0); }}
-        hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {{
-            background-color: rgba(255, 255, 255, 0.2) !important;
-            border: none !important;
-            height: 3px !important;
-            border-radius: 2px !important;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+FILE_CSS = Path(__file__).with_name("style.css")
 
-if tema_aplikasi == "light":
+
+# Mengubah file gambar menjadi data URL untuk dipakai di variabel CSS.
+def gambar_css(file_gambar, tipe_default):
+    tipe = mimetypes.guess_type(file_gambar.name)[0] or tipe_default
+    data = base64.b64encode(file_gambar.read_bytes()).decode("ascii")
+    return f'url("data:{tipe};base64,{data}")'
+
+
+# Menyusun variabel CSS dan penanda aktif, lalu memuat style.css.
+def terapkan_css(tema):
+    variabel = []
+    penanda = ["terang" if tema == "light" else "gelap"]
+
+    # Pilih wallpaper sesuai tema dari folder "bahan_gambar".
+    nama_wallpaper = "background_terang.jpg" if tema == "light" else "background.jpg"
+    gambar_latar = FOLDER_GAMBAR_LATAR / nama_wallpaper
+    if not gambar_latar.is_file():
+        gambar_latar = FOLDER_GAMBAR_LATAR / "background.jpg"
+    if not gambar_latar.is_file():
+        gambar_latar = next(
+            (file for file in sorted(FOLDER_GAMBAR_LATAR.glob("*"))
+             if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}),
+            None,
+        )
+    if gambar_latar is not None:
+        if tema == "light":
+            lapisan_awal = "rgba(255, 255, 255, .20)"
+            lapisan_akhir = "rgba(255, 255, 255, .28)"
+        else:
+            lapisan_awal = "rgba(34, 15, 57, .48)"
+            lapisan_akhir = "rgba(34, 15, 57, .64)"
+        variabel.append(f"--gambar-latar: {gambar_css(gambar_latar, 'image/jpeg')};")
+        variabel.append(f"--lapisan-awal: {lapisan_awal};")
+        variabel.append(f"--lapisan-akhir: {lapisan_akhir};")
+        penanda.append("ada-latar")
+
+    # Artwork menggantikan garis bingkai kartu, mengikuti tema yang aktif.
+    nama_bingkai = "back_light.png" if tema == "light" else "back_dark.png"
+    file_bingkai = FOLDER_GAMBAR_LATAR / nama_bingkai
+    warna_garis_bingkai = "#eee9f0" if tema == "light" else "#4c1d95"
+    if file_bingkai.is_file():
+        variabel.append(f"--gambar-bingkai: {gambar_css(file_bingkai, 'image/png')};")
+        variabel.append(f"--warna-garis-bingkai: {warna_garis_bingkai};")
+        penanda.append("ada-bingkai")
+    elif tema == "dark":
+        penanda.append("bingkai-cadangan")
+
+    # Dekorasi partikel mengambang pada wallpaper.
+    file_partikel = FOLDER_GAMBAR_LATAR / "partikel.png"
+    if file_partikel.is_file():
+        variabel.append(f"--gambar-partikel: {gambar_css(file_partikel, 'image/png')};")
+        penanda.append("ada-partikel")
+
+    css_statis = FILE_CSS.read_text(encoding="utf-8")
+    
     st.markdown(
-        """
-        <style>
-        .stApp, [data-testid="stAppViewContainer"] { color: #392447; }
-        [data-testid="stSidebar"] {
-            background: rgba(246, 228, 250, .97) !important;
-        }
-        [data-testid="stSidebar"] > div:first-child {
-            background: rgba(246, 228, 250, .97) !important;
-        }
-        [data-testid="stSidebar"] * {
-            color: #392447 !important;
-        }
-        .about-title { color: #5b2678 !important; }
-        div[data-testid="stPopoverBody"] { background:rgba(248,231,255,.96) !important; border-color:rgba(112,68,139,.28) !important; }
-        div[data-testid="stPopoverBody"] * { color:#392447 !important; }
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            background: rgba(247, 229, 252, .76) !important;
-            border-color: rgba(130, 88, 151, .34) !important;
-        }
-        [data-testid="stTextArea"] textarea,
-        [data-testid="stTextInput"] input,
-        [data-testid="stNumberInput"] input {
-            background: rgba(255, 240, 249, .98) !important;
-            color: #392447 !important;
-            border-color: #8b55b5 !important;
-        }
-        [data-testid="stNumberInput"] button {
-            background: rgba(241, 222, 248, .98) !important;
-            color: #392447 !important;
-            border-color: rgba(141, 101, 160, .36) !important;
-        }
-        [data-testid="stTextArea"] textarea::placeholder,
-        [data-testid="stTextInput"] input::placeholder {
-            color: rgba(73, 49, 86, .58) !important;
-        }
-        [data-testid="stFileUploader"] section {
-            background: rgba(247, 232, 253, .86) !important;
-            border-color: rgba(141, 101, 160, .40) !important;
-        }
-        [data-testid="stFileUploader"] section,
-        [data-testid="stFileUploader"] section * {
-            color: #392447 !important;
-        }
-        [data-testid="stCameraInput"] button {
-            background: rgba(247, 231, 252, .96) !important;
-            color: #392447 !important;
-            border-color: rgba(141, 101, 160, .40) !important;
-        }
-        </style>
-        """,
+        f"<style>\n:root {{ {' '.join(variabel)} }}\n{css_statis}\n</style>"
+        f'<div class="penanda-tema {" ".join(penanda)}" style="display:none"></div>',
         unsafe_allow_html=True,
     )
 
 
-# Artwork menggantikan garis bingkai kartu, mengikuti tema yang aktif.
-NAMA_BINGKAI = "back_light.png" if tema_aplikasi == "light" else "back_dark.png"
-FILE_BINGKAI = FOLDER_GAMBAR_LATAR / NAMA_BINGKAI
-WARNA_GARIS_BINGKAI = "#eee9f0" if tema_aplikasi == "light" else "#4c1d95"
-if FILE_BINGKAI.is_file():
-    tipe_bingkai = mimetypes.guess_type(FILE_BINGKAI.name)[0] or "image/png"
-    bingkai_base64 = base64.b64encode(FILE_BINGKAI.read_bytes()).decode("ascii")
-    css_bingkai = f"""
-    <style>
-    div[class*="st-key-student_card_"],
-    div[class*="st-key-question_card_"],
-    div[class*="st-key-about_card"],
-    div[class*="st-key-auth_card"] {{
-        border: 3px solid {WARNA_GARIS_BINGKAI} !important;
-        outline: 0 !important;
-        box-shadow: none !important;
-        border-radius: 16px !important;
-        overflow: hidden !important;
-        background: url("data:{tipe_bingkai};base64,{bingkai_base64}") center / 100% 100% no-repeat !important;
-    }}
-    div[class*="st-key-student_card_"] [data-testid="stVerticalBlockBorderWrapper"],
-    div[class*="st-key-student_card_"] [data-testid="stVerticalBlock"],
-    div[class*="st-key-question_card_"] [data-testid="stVerticalBlockBorderWrapper"],
-    div[class*="st-key-question_card_"] [data-testid="stVerticalBlock"],
-    div[class*="st-key-about_card"] [data-testid="stVerticalBlockBorderWrapper"],
-    div[class*="st-key-about_card"] [data-testid="stVerticalBlock"],
-    div[class*="st-key-auth_card"] [data-testid="stVerticalBlockBorderWrapper"],
-    div[class*="st-key-auth_card"] [data-testid="stVerticalBlock"] {{
-        border: 0 !important;
-        outline: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-    }}
-    </style>
-    """
-    st.markdown(css_bingkai, unsafe_allow_html=True)
-elif tema_aplikasi == "dark":
-    # Sembunyikan outline putih jika gambar bingkai belum terbaca.
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stVerticalBlockBorderWrapper"],
-        div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
-            border: 0 !important;
-            outline: 0 !important;
-            box-shadow: none !important;
-            border-radius: 16px !important;
-            background: rgba(57, 25, 88, .78) !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Dekorasi partikel mengambang pada wallpaper tema gelap.
-FILE_PARTIKEL = FOLDER_GAMBAR_LATAR / "partikel.png"
-if FILE_PARTIKEL.is_file():
-    tipe_partikel = mimetypes.guess_type(FILE_PARTIKEL.name)[0] or "image/png"
-    partikel_base64 = base64.b64encode(FILE_PARTIKEL.read_bytes()).decode("ascii")
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{ position: relative; isolation: isolate; }}
-        .stApp::before, .stApp::after {{
-            content: "";
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            background-image: url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}"),
-                              url("data:{tipe_partikel};base64,{partikel_base64}");
-            background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-            will-change: opacity, background-position, transform;
-        }}
-        .stApp::before {{
-            opacity: 0;
-            background-size: 126px 126px, 88px 88px, 104px 104px, 74px 74px, 64px 64px;
-            background-position: 12% 22%, 27% 73%, 68% 18%, 82% 79%, 47% 48%;
-            animation: partikel-fade-satu 3s ease-in-out infinite,
-                       partikel-ombak-satu 8s ease-in-out infinite;
-        }}
-        .stApp::after {{
-            opacity: 0;
-            background-size: 112px 112px, 92px 92px, 78px 78px, 70px 70px, 56px 56px;
-            background-position: 88% 76%, 74% 36%, 42% 55%, 16% 48%, 57% 84%;
-            animation: partikel-fade-dua 3s ease-in-out -1.5s infinite,
-                       partikel-ombak-dua 10s ease-in-out -4s infinite;
-        }}
-        .stApp > header, .stApp > div {{ position: relative; z-index: 1; }}
-        @keyframes partikel-fade-satu {{
-            0%, 100% {{ opacity: 0; }}
-            50% {{ opacity: 1; }}
-        }}
-        @keyframes partikel-fade-dua {{
-            0%, 100% {{ opacity: 0; }}
-            50% {{ opacity: 1; }}
-        }}
-        @keyframes partikel-ombak-satu {{
-            0%, 100% {{ transform: translate3d(0, 0, 0); }}
-            25% {{ transform: translate3d(12px, -16px, 0); }}
-            50% {{ transform: translate3d(22px, 3px, 0); }}
-            75% {{ transform: translate3d(10px, 17px, 0); }}
-        }}
-        @keyframes partikel-ombak-dua {{
-            0%, 100% {{ transform: translate3d(0, 0, 0); }}
-            25% {{ transform: translate3d(-14px, 13px, 0); }}
-            50% {{ transform: translate3d(-24px, -4px, 0); }}
-            75% {{ transform: translate3d(-11px, -17px, 0); }}
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+terapkan_css(tema_aplikasi)
 
 # Fitur login/daftar: pengguna boleh mencoba koreksi, lalu masuk untuk menyimpan hasil.
 st.session_state.setdefault("auth_mode", None)
@@ -880,7 +627,6 @@ with st.sidebar:
         "3. Anda bisa mengecek terlebih dahulu dengan minjau skor hasil koreksi jika kurang sesuai\n"
         "4. Jika sudah, klik setujui tiap soal untuk nilai akhir"
     )
-    st.caption(f"Model: {MODEL}")
 
 # Menyimpan soal dan acuan yang dibuat satu kali untuk seluruh siswa.
 daftar_soal = []

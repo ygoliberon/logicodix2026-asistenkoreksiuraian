@@ -1,0 +1,278 @@
+/* ==========================================================================
+   Nilai yang bergantung pada tema atau file gambar (wallpaper, bingkai,
+   partikel, warna lapisan) dikirim dari app.py sebagai variabel CSS pada
+   :root, dan penanda <div class="penanda-tema ..."> dipakai untuk
+   mengaktifkan blok yang sesuai:
+     .terang / .gelap          -> tema aktif
+     .ada-latar                -> gambar wallpaper ditemukan
+     .ada-bingkai              -> gambar bingkai kartu ditemukan
+     .bingkai-cadangan         -> tema gelap tanpa gambar bingkai
+     .ada-partikel             -> gambar partikel ditemukan
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Scroll area
+   -------------------------------------------------------------------------- */
+html, body, #root {
+    height: 100%;
+    overflow: hidden;
+}
+
+[data-testid="stAppViewContainer"] {
+    height: 100vh;
+    overflow: hidden;
+}
+
+[data-testid="stMain"] {
+    height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. Tema dasar: ungu, kartu, lencana skor, header responsif
+   -------------------------------------------------------------------------- */
+:root { --accent:#6256e8; --border: 3px solid rgba(230, 234, 241, 0.27); }
+.block-container { max-width:1480px; padding:1.2rem 2rem 4rem; }
+div[data-testid="stSegmentedControl"] {
+    border-radius: 999px;
+    padding: .2rem;
+}
+div[data-testid="stSegmentedControl"] button {
+    border-radius: 999px !important;
+    font-weight: 700;
+}
+div[data-testid="stSelectbox"] > div {
+    border-radius: 12px;
+}
+.about-title { text-align:center; font-size:clamp(2.7rem,7vw,5rem); font-style:italic; font-weight:900; letter-spacing:.04em; margin:1rem 0 3rem; color:#f5eaff; }
+.st-key-nav_beranda button, .st-key-nav_masuk button, .st-key-nav_daftar button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
+.st-key-nav_beranda button:hover, .st-key-nav_masuk button:hover { color:#d9b5ff !important; }
+.st-key-nav_daftar button { border:1px solid rgba(255,255,255,.55) !important; border-radius:999px !important; }
+div[data-testid="stPopover"] > button { background:transparent !important; border:0 !important; box-shadow:none !important; font-weight:700; }
+div[data-testid="stPopoverBody"] { background:rgba(48,31,76,.92) !important; backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.2); border-radius:16px; }
+.hero { position:relative; overflow:hidden; background:linear-gradient(130deg,#4c1d95 0%,#6d35c9 55%,#8b5cf6 100%); color:#fff; padding:2rem 2.2rem; border-radius:22px; margin-bottom:1.5rem; box-shadow:0 16px 38px rgba(91,33,182,.28); }
+.hero:after { content:""; position:absolute; width:210px; height:210px; right:-55px; top:-95px; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.035); }
+.hero h1 { color:#fff; margin:0; font-size:clamp(1.6rem,3vw,2.15rem); padding:0; letter-spacing:-.035em; position:relative; z-index:1; }
+.hero p { color:#ede9fe; margin:.55rem 0 0; max-width:650px; font-size:1rem; line-height:1.6; position:relative; z-index:1; }
+.hero-kicker { display:inline-block; margin-bottom:.7rem; padding:.28rem .65rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:999px; color:#f5f3ff; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.badge { display:inline-block; color:#fff; font-weight:700; padding:.3rem .8rem; border-radius:999px; font-size:.86rem; }
+.skor-besar { font-size:2.2rem; font-weight:800; line-height:1; }
+.chip-ok { background:rgba(34,197,94,.13); color:#15803d; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
+.chip-warn { background:rgba(245,158,11,.13); color:#b45309; padding:.65rem .85rem; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:12px; font-size:.92rem; }
+.alasan { background:rgba(127,127,127,.08); border: 3px solid rgba(230, 234, 241, 0.27); padding:.85rem 1rem; border-radius:12px; font-size:.94rem; line-height:1.6; }
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 3px solid rgba(230, 234, 241, 0.27) !important;
+    border-radius: 16px !important;
+}
+
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input { background:rgba(48,31,76,1) !important; color:#f4f7fb !important; border: 3px solid rgba(230, 234, 241, 0.27) !important; border-radius:11px; }
+[data-testid="stTextArea"] textarea:focus, [data-testid="stTextInput"] input:focus, [data-testid="stNumberInput"] input:focus { border-color:#c9a9ff !important; box-shadow:0 0 0 2px rgba(192,156,255,.2) !important; }
+[data-testid="stTextArea"] textarea::placeholder, [data-testid="stTextInput"] input::placeholder { color:rgba(238,225,255,.58) !important; }
+[data-testid="stFileUploader"] section { background:rgba(0, 0, 0, 0.55); border: 3px solid rgba(230, 234, 241, 0.27); border-radius:13px; }
+[data-testid="stFileUploader"] section, [data-testid="stFileUploader"] section * { color:#f3eaff; }
+[data-testid="stCameraInput"] button { background:rgba(69,43,105,.86); color:#f4f7fb; border: 3px solid rgba(230, 234, 241, 0.27); border-radius:10px; }
+.stButton>button, .stFormSubmitButton>button { min-height:2.8rem; border-radius:12px; font-weight:650; padding:.6rem 1.05rem; transition:transform .15s ease, box-shadow .15s ease; }
+.stButton>button:hover, .stFormSubmitButton>button:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(139,92,246,.22); }
+[data-testid="stSidebar"] { border: 3px solid rgba(230, 234, 241, 0.27); }
+[data-testid="stAlert"] { border-radius:12px; }
+
+hr, [data-testid="stDivider"] hr, [data-testid="stDivider"] {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: none !important;
+    height: 3px !important;
+    border-radius: 2px !important;
+}
+
+@media(max-width:700px) { .block-container { padding:1.2rem .8rem 3rem; } .hero { padding:1.45rem 1.25rem; border-radius:17px; } .hero p {font-size:.92rem;} }
+
+
+/* --------------------------------------------------------------------------
+   3. Wallpaper (aktif jika gambar latar ditemukan)
+   -------------------------------------------------------------------------- */
+:where(:root:has(.penanda-tema.ada-latar)) .stApp {
+    background:
+        linear-gradient(var(--lapisan-awal), var(--lapisan-akhir)),
+        var(--gambar-latar) center / cover fixed no-repeat;
+}
+:where(:root:has(.penanda-tema.ada-latar)) .stApp,
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stAppViewContainer"] {
+    background-color: transparent;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+:where(:root:has(.penanda-tema.ada-latar)) div[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 3px solid rgba(230, 234, 241, 0.27) !important;
+    border-radius: 16px !important;
+}
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stTextArea"] textarea,
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stTextInput"] input,
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stNumberInput"] input {
+    background: rgba(48, 31, 76, 1) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stSidebar"] > div:first-child {
+    background: rgba(31, 19, 49, .94);
+}
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stHeader"] { background: rgba(0, 0, 0, 0); }
+:where(:root:has(.penanda-tema.ada-latar)) hr,
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stDivider"] hr,
+:where(:root:has(.penanda-tema.ada-latar)) [data-testid="stDivider"] {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: none !important;
+    height: 3px !important;
+    border-radius: 2px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. Tema terang (aktif jika tema Streamlit = light)
+   -------------------------------------------------------------------------- */
+:where(:root:has(.penanda-tema.terang)) .stApp,
+:where(:root:has(.penanda-tema.terang)) [data-testid="stAppViewContainer"] { color: #392447; }
+:where(:root:has(.penanda-tema.terang)) [data-testid="stSidebar"] {
+    background: rgba(246, 228, 250, .97) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stSidebar"] > div:first-child {
+    background: rgba(246, 228, 250, .97) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stSidebar"] * {
+    color: #392447 !important;
+}
+:where(:root:has(.penanda-tema.terang)) .about-title { color: #5b2678 !important; }
+:where(:root:has(.penanda-tema.terang)) div[data-testid="stPopoverBody"] { background:rgba(248,231,255,.96) !important; border-color:rgba(112,68,139,.28) !important; }
+:where(:root:has(.penanda-tema.terang)) div[data-testid="stPopoverBody"] * { color:#392447 !important; }
+:where(:root:has(.penanda-tema.terang)) div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: rgba(247, 229, 252, .76) !important;
+    border-color: rgba(130, 88, 151, .34) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stTextArea"] textarea,
+:where(:root:has(.penanda-tema.terang)) [data-testid="stTextInput"] input,
+:where(:root:has(.penanda-tema.terang)) [data-testid="stNumberInput"] input {
+    background: rgba(255, 240, 249, .98) !important;
+    color: #392447 !important;
+    border-color: #8b55b5 !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stNumberInput"] button {
+    background: rgba(241, 222, 248, .98) !important;
+    color: #392447 !important;
+    border-color: rgba(141, 101, 160, .36) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stTextArea"] textarea::placeholder,
+:where(:root:has(.penanda-tema.terang)) [data-testid="stTextInput"] input::placeholder {
+    color: rgba(73, 49, 86, .58) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stFileUploader"] section {
+    background: rgba(247, 232, 253, .86) !important;
+    border-color: rgba(141, 101, 160, .40) !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stFileUploader"] section,
+:where(:root:has(.penanda-tema.terang)) [data-testid="stFileUploader"] section * {
+    color: #392447 !important;
+}
+:where(:root:has(.penanda-tema.terang)) [data-testid="stCameraInput"] button {
+    background: rgba(247, 231, 252, .96) !important;
+    color: #392447 !important;
+    border-color: rgba(141, 101, 160, .40) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. Bingkai kartu (aktif jika gambar bingkai ditemukan)
+   -------------------------------------------------------------------------- */
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-student_card_"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-question_card_"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-about_card"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-auth_card"] {
+    border: 3px solid var(--warna-garis-bingkai) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    background: var(--gambar-bingkai) center / 100% 100% no-repeat !important;
+}
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-student_card_"] [data-testid="stVerticalBlockBorderWrapper"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-student_card_"] [data-testid="stVerticalBlock"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-question_card_"] [data-testid="stVerticalBlockBorderWrapper"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-question_card_"] [data-testid="stVerticalBlock"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-about_card"] [data-testid="stVerticalBlockBorderWrapper"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-about_card"] [data-testid="stVerticalBlock"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-auth_card"] [data-testid="stVerticalBlockBorderWrapper"],
+:where(:root:has(.penanda-tema.ada-bingkai)) div[class*="st-key-auth_card"] [data-testid="stVerticalBlock"] {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Cadangan tema gelap: sembunyikan outline putih jika gambar bingkai belum terbaca. */
+:where(:root:has(.penanda-tema.bingkai-cadangan)) div[data-testid="stVerticalBlockBorderWrapper"],
+:where(:root:has(.penanda-tema.bingkai-cadangan)) div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    border-radius: 16px !important;
+    background: rgba(57, 25, 88, .78) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   6. Partikel mengambang (aktif jika gambar partikel ditemukan)
+   -------------------------------------------------------------------------- */
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp { position: relative; isolation: isolate; }
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp::before,
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--gambar-partikel),
+                      var(--gambar-partikel),
+                      var(--gambar-partikel),
+                      var(--gambar-partikel),
+                      var(--gambar-partikel);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    will-change: opacity, background-position, transform;
+}
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp::before {
+    opacity: 0;
+    background-size: 126px 126px, 88px 88px, 104px 104px, 74px 74px, 64px 64px;
+    background-position: 12% 22%, 27% 73%, 68% 18%, 82% 79%, 47% 48%;
+    animation: partikel-fade-satu 3s ease-in-out infinite,
+               partikel-ombak-satu 8s ease-in-out infinite;
+}
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp::after {
+    opacity: 0;
+    background-size: 112px 112px, 92px 92px, 78px 78px, 70px 70px, 56px 56px;
+    background-position: 88% 76%, 74% 36%, 42% 55%, 16% 48%, 57% 84%;
+    animation: partikel-fade-dua 3s ease-in-out -1.5s infinite,
+               partikel-ombak-dua 10s ease-in-out -4s infinite;
+}
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp > header,
+:where(:root:has(.penanda-tema.ada-partikel)) .stApp > div { position: relative; z-index: 1; }
+
+@keyframes partikel-fade-satu {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+@keyframes partikel-fade-dua {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+@keyframes partikel-ombak-satu {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    25% { transform: translate3d(12px, -16px, 0); }
+    50% { transform: translate3d(22px, 3px, 0); }
+    75% { transform: translate3d(10px, 17px, 0); }
+}
+@keyframes partikel-ombak-dua {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    25% { transform: translate3d(-14px, 13px, 0); }
+    50% { transform: translate3d(-24px, -4px, 0); }
+    75% { transform: translate3d(-11px, -17px, 0); }
+}
