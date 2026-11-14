@@ -20,7 +20,7 @@ Proyek ini dikembangkan oleh **Tim Triboma** untuk mengikuti **LOGICODIX 2026**.
 - **Target pengguna:** Guru Mata Pelajaran Eksak yang perlu memeriksa jawaban uraian dari siswa.
 - **Masalah yang diangkat:** Pemeriksaan tugas/ujian uraian membutuhkan waktu, terutama ketika guru mengajar banyak kelas. Jam Pelajaran yang banyak menyebabkan guru tidak sempat mengoreksi ujian. Bahkan dari Bapak Ibu Guru kami yang ditanyai, sampai membawa lembar ujian siswa ke rumah mereka untuk dikoreksi saat di rumah. 
 - **Solusi:** Aplikasi menggabungkan transkripsi foto, penilaian berbantuan AI berdasarkan soal, acuan, dan rubrik berbobot, serta persetujuan akhir oleh guru.
-- **Tautan demo:** [Tambahkan URL aplikasi yang sudah di-deploy]
+- **Tautan demo:** (https://ruangbantukoreksi.streamlit.app/)
 
 ## Fitur utama
 
@@ -160,8 +160,8 @@ Aplikasi membuat `koreksi.db` di direktori yang sama dengan file utama. SQLite c
 
 Aplikasi bisa dicoba tanpa akun namun tidak bisa melihat riwayat koreksi.
 Jika ingin menggunakan akun, silahkan gunakan akun demo berikut: 
-- **Username:** 
-- **Password:**
+- **Username:** guru@123.com
+- **Password:** cobacoba
 
 ## Penggunaan AI
 
