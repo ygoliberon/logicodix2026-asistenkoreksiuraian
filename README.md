@@ -71,6 +71,14 @@ Database lokal `koreksi.db` berisi akun, ringkasan koreksi, dan rincian nilai pe
 
 ## Persiapan dan instalasi
 
+### Memakai aplikasi yang sudah di-deploy
+
+Jika hanya ingin menggunakan aplikasi, buka tautan demo pada bagian Informasi aplikasi. Pengguna tidak perlu membuat atau memasukkan API key. API key untuk aplikasi yang di-deploy disimpan oleh tim pada pengaturan Secrets layanan hosting.
+
+### Menjalankan salinan repositori 
+
+Langkah clone di bawah ini ditujukan untuk pengembang yang ingin menjalankan aplikasi di komputer sendiri atau Codespaces. Untuk menjalankan salinan tersebut, siapkan API key OpenRouter milik sendiri. 
+
 ### Persyaratan
 
 - Python 3.10 atau lebih baru.
@@ -108,25 +116,38 @@ Database lokal `koreksi.db` berisi akun, ringkasan koreksi, dan rincian nilai pe
    python -m pip install -r requirements.txt
    ```
 
-4. Salin `.env.example` sebagai panduan nama variabel, lalu atur `OPENROUTER_API_KEY` di environment terminal. Contoh PowerShell:
+4. Atur `OPENROUTER_API_KEY` di environment terminal menggunakan API key OpenRouter milik sendiri. File `.env.example` hanya menunjukkan nama variabel yang diperlukan; aplikasi tidak otomatis membaca file `.env`. Contoh PowerShell:
 
    ```powershell
    $env:OPENROUTER_API_KEY="isi_dengan_api_key_anda"
    ```
 
-   Contoh Linux/macOS/Codespaces:
+   Contoh Linux atau macOS:
 
    ```bash
    export OPENROUTER_API_KEY="isi_dengan_api_key_anda"
    ```
 
-   Jangan masukkan API key asli ke source code atau GitHub. File `.env.example` hanya contoh dan bukan tempat menyimpan key aktif.
+   Jangan masukkan API key asli ke source code, screenshot, atau GitHub. Jangan mengisi `.env.example` dengan key aktif.
+
+   **Codespaces:** buat Codespaces Secret bernama `OPENROUTER_API_KEY` pada pengaturan repositori atau akun GitHub, lalu mulai ulang Codespace agar secret terbaca. Jangan menulis key ke file yang akan di-commit.
 
 5. Jalankan aplikasi:
 
    ```bash
    python -m streamlit run app.py
    ```
+
+6. Buka aplikasi di browser.
+
+   - **Komputer lokal:** buka alamat yang ditampilkan Streamlit di terminal, biasanya `http://localhost:8501`.
+   - **Codespaces:** buka tab **Ports**, lalu klik tautan port `8501` yang diteruskan ke browser.
+
+7. Coba aplikasi menggunakan berkas contoh di folder `sample_uji_coba`.
+
+   - Masukkan soal dan kunci jawaban dari file `soal_dan_kunci_jawaban`.
+   - Unggah foto lembar jawaban `siswa1.png` atau `siswa2.png` untuk menguji pembacaan dan penilaian.
+   
 
 ### Catatan penyimpanan database
 
@@ -153,7 +174,7 @@ AI digunakan untuk dua tugas yang terpisah:
 - **Streamlit:** framework antarmuka web, [streamlit.io](https://streamlit.io/).
 - **Requests:** pustaka HTTP Python, [requests.readthedocs.io](https://requests.readthedocs.io/).
 - **OpenRouter:** layanan perantara API model, [openrouter.ai](https://openrouter.ai/).
-- **NVIDIA Nemotron 3.5 Super VL:** model yang dipakai untuk transkripsi gambar. Lihat halaman model dan lisensi/ketentuannya di katalog OpenRouter sebelum distribusi.
-- **NVIDIA Nemotron 3 Ultra:** model yang dipakai untuk saran penilaian teks. Lihat halaman model dan lisensi/ketentuannya di katalog OpenRouter sebelum distribusi.
+- **NVIDIA Nemotron 3.5 Super VL:** model yang dipakai untuk transkripsi gambar. (https://docs.nvidia.com/nemo/automodel/nightly/recipes-e2e-examples/nemotron-3-5-super-vl)
+- **NVIDIA Nemotron 3 Ultra:** model yang dipakai untuk saran penilaian teks. https://docs.nvidia.com/nemotron/0.2.0/nemotron/ultra3/mopd.html
 - **Aset pada `bahan_gambar/`:** `background.jpg`, `background_terang.jpg`, `element.png`, dan `logo.png` dibuat oleh Tim Triboma menggunakan Canva
-- **Dataset:** Soal ujian, kunci jawaban dan Foto lembar siswa bisa mengggunakan file yang ada di folder sample_uji_coba
+- **Soal Ujian, Kunci Jawaban, dan Foto lembar jawaban siswa:** Soal ujian dan kunci jawaban merupakan soal yang dibuat salah satu guru kami. Foto lembar siswa merupakan beberapa lembar jawaban merupakan lembar jawaban asli namun nama yang tertulis diganti dengan nama samaran.

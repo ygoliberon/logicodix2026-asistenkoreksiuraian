@@ -15,8 +15,9 @@ import streamlit as st
 from pathlib import Path
 
 # Model AI dan URL OpenRouter
-MODEL_VISION = "nvidia/nemotron-3.5-super-vl:free"
+MODEL_VISION = "orvix/qwen-3.8-omni-flash"
 MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
+ORVIX_URL = "https://api.orvix.id/v1/chat/completions"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # FUNGSI UNTUK PEMERIKSAAN TEKS DAN TAMPILAN SKOR.
@@ -291,6 +292,46 @@ def minta_openrouter(api_key, model, konten):
 
     return re.sub(r"^```(?:json)?\s*|\s*```$", "", isi.strip())
 
+def minta_orvix(api_key, model, konten):
+    if not api_key:
+        raise ValueError("API key Orvix belum terbaca.")
+
+    response = requests.post(
+        ORVIX_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {"role": "user", "content": konten}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 4096,
+        },
+        timeout=120,
+    )
+
+    if not response.ok:
+        raise ValueError(
+            f"Orvix memberi respons {response.status_code}: "
+            f"{response.text[:500]}"
+        )
+
+    data = response.json()
+    pilihan = data.get("choices") or []
+
+    if not pilihan:
+        raise ValueError("Orvix tidak mengembalikan jawaban.")
+
+    teks = pilihan[0].get("message", {}).get("content", "")
+
+    if not isinstance(teks, str) or not teks.strip():
+        raise ValueError("Jawaban OCR dari Orvix kosong atau tidak terbaca.")
+
+    return teks.strip()
+
 st.set_page_config(
     page_title="Ruang Bantu Koreksi",
     page_icon="📝",
@@ -310,6 +351,29 @@ if tema_aplikasi not in {"light", "dark"}:
     tema_aplikasi = "dark"
 
 # Fitur tampilan: tema ungu, kartu, lencana skor, dan header responsif.
+st.markdown(
+    """
+    <style>
+    html, body, #root {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    [data-testid="stAppViewContainer"] {
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    [data-testid="stMain"] {
+        height: 100vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.markdown(
     """
 <style>
@@ -983,11 +1047,20 @@ if kirim:
             "dan 10 MB untuk seluruh foto milik satu siswa."
         )
     else:
-        # Membaca API key dari Codespaces secret.
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        # Membaca API key untuk OCR dan penilaian.
+        orvix_api_key = os.getenv("ORVIX_API_KEY")
+        openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
 
-        if not api_key:
-            st.error("API key belum terbaca. Periksa Codespaces secret.")
+        if not orvix_api_key:
+            st.error(
+                "API key Orvix belum terbaca. "
+                "Periksa secret ORVIX_API_KEY."
+            )
+        elif not openrouter_api_key:
+            st.error(
+                "API key OpenRouter belum terbaca. "
+                "Periksa secret OPENROUTER_API_KEY."
+            )
         else:
             # Membaca nama dan jawaban dari 1–3 foto milik setiap siswa.
             hasil_ocr_semua_siswa = []
@@ -998,27 +1071,40 @@ if kirim:
             # PROMPT OCR (versi baru): transkripsi apa adanya + penanda keraguan.
             instruksi_ocr = (
                 "Kamu adalah transkriber tulisan tangan siswa untuk pelajaran matematika. "
-                "Tugasmu HANYA menyalin apa yang tertulis. Kamu bukan penilai dan bukan "
-                "pemecah soal.\n\n"
+                "Tugasmu HANYA menyalin apa yang tertulis dan mengelompokkan tulisan "
+                "berdasarkan nomor soal. Kamu bukan penilai dan bukan pemecah soal.\n\n"
 
                 "KONTEKS\n"
                 "Foto-foto berikut adalah lembar jawaban milik satu siswa, diberikan sesuai "
                 "urutan lembar. Baca semuanya sebagai satu kumpulan.\n"
-                f"Nomor soal yang valid hanya: {sorted(nomor_soal_valid)}. Jangan membuat nomor lain. "
+                f"Nomor soal yang valid hanya: {sorted(nomor_soal_valid)}. Jangan membuat nomor lain.\n"
                 "Jangan mengeluarkan entri jawaban kosong atau placeholder.\n\n"
 
                 "LANGKAH KERJA\n"
-                "1. Ambil nama siswa jika tertulis di lembar (biasanya di bagian atas). "
+                "1. Ambil nama siswa jika tertulis di lembar, biasanya di bagian atas. "
                 "Jika tidak ada, isi dengan teks kosong.\n"
-                "2. Temukan nomor soal yang benar-benar tampak pada lembar, lalu kelompokkan "
-                "tulisan jawaban berdasarkan nomor tersebut. Jika satu jawaban berlanjut "
-                "di lembar berikutnya, gabungkan sesuai urutan.\n"
-                "3. Lembar bisa terbagi menjadi beberapa kolom atau bagian (misalnya kolom "
-                "kiri dan kanan, atau kotak bernomor seperti ① ②). Baca satu kolom sampai "
-                "selesai sebelum pindah ke kolom lain. Perhatikan nomor yang dilingkari "
-                "atau ditulis di pinggir sebagai penanda soal.\n"
-                "4. Tulis ulang tiap baris persis seperti yang tertulis siswa, dengan "
-                "urutan baris yang sama. Pisahkan baris dengan karakter newline.\n\n"
+                "2. Bagi setiap lembar menjadi bagian-bagian jawaban. Cari batas tiap bagian "
+                "dengan memperhatikan nomor soal yang terlihat, judul atau penanda, garis "
+                "pemisah, jarak, dan tata letak tulisan. Kelompokkan tulisan ke nomor soal "
+                "yang didukung oleh penanda pada foto.\n"
+                "3. Periksa tata letak seluruh halaman, termasuk kolom kiri dan kanan. "
+                "Jangan menganggap semua tulisan setelah nomor soal pertama sebagai jawaban "
+                "untuk soal itu. Jangan menggabungkan tulisan dari dua kolom berbeda hanya "
+                "karena urutan bacanya berdekatan.\n"
+                "4. Nomor soal dapat ditulis biasa, dilingkari, atau diletakkan di pinggir "
+                "bagian jawaban. Jika terlihat penanda seperti ① atau ②, perlakukan sebagai "
+                "nomor soal jika nomornya termasuk nomor yang valid. Tulisan di bawah atau "
+                "di samping penanda tersebut termasuk bagian itu sampai terlihat penanda "
+                "soal lain atau batas bagian yang jelas.\n"
+                "5. Jika jawaban satu soal berlanjut di lembar berikutnya, gabungkan bagian "
+                "tersebut sesuai urutan lembar. Jangan gabungkan jawaban dari nomor soal "
+                "berbeda.\n"
+                "6. Jika ada tulisan nyata tetapi nomor soalnya tidak terbaca dan letaknya "
+                "tidak cukup jelas untuk dipasangkan, jangan menebak dan jangan memasukkannya "
+                "ke nomor sebelumnya. Masukkan lokasi dan transkripsinya ke "
+                "'tidak_terpetakan'. Jangan menghilangkan tulisan yang terbaca.\n"
+                "7. Tulis ulang tiap baris sesuai urutan barisnya. Pisahkan baris dengan "
+                "karakter newline.\n\n"
 
                 "ATURAN TRANSKRIPSI (PENTING)\n"
                 "- Salin apa adanya. JANGAN memperbaiki, menghitung ulang, menyesuaikan, "
@@ -1027,45 +1113,44 @@ if kirim:
                 "- JANGAN mengubah angka agar cocok dengan angka lain di lembar, dengan "
                 "perhitungan, atau dengan logika soal. Ketidakcocokan angka adalah "
                 "informasi yang dibutuhkan guru.\n"
-                "- Pecahan: tulis dalam bentuk linear, misalnya 616/28 atau (1/3) x 22/7. "
-                "Tulisan atas-bawah dengan garis di tengah adalah pecahan. Kata 'per' "
-                "atau garis miring bermakna pecahan atau pembagian.\n"
-                "- Operasi: tulis x untuk perkalian, : atau / untuk pembagian, sesuai "
-                "tulisan siswa. Pangkat tulis dengan ^, misalnya r^2 atau 10^2. Akar "
-                "tulis sebagai akar(...). Tulis pi sebagai π bila terlihat.\n"
-                "- Satuan (cm, m, m^2, dm, dst.) dan tanda sama dengan harus ikut disalin.\n"
-                "- Angka ambigu: pada tulisan tangan, angka 7 sering memakai garis "
-                "silang di tengah atau garis di atas, dan sering mirip angka 1. Angka 1 "
-                "biasanya lebih pendek dan tanpa garis atas. Angka 4 dan 9, serta 0 dan 6 "
-                "juga sering tertukar. Perhatikan bentuk setiap angka dengan teliti, "
-                "terutama pada angka yang berkali-kali muncul di lembar yang sama. "
-                "Bandingkan dengan cara siswa menulis angka itu di tempat lain pada "
-                "foto yang sama.\n"
-                "- Coretan: tulisan yang dicoret jangan dimasukkan, kecuali satu-satunya "
-                "isi baris itu. Jika dimasukkan, beri tanda [dicoret].\n"
-                "- Jika ada bagian yang tidak terbaca sama sekali, tulis [?] di posisinya. "
-                "Jangan menebak untuk menutup kekosongan.\n\n"
+                "- Pecahan ditulis dalam bentuk linear, misalnya 616/28 atau (1/3) x 22/7. "
+                "Tulisan atas-bawah dengan garis di tengah adalah pecahan. Kata 'per' atau "
+                "garis miring dapat bermakna pecahan atau pembagian.\n"
+                "- Operasi ditulis menggunakan x untuk perkalian dan : atau / untuk "
+                "pembagian, sesuai tulisan siswa. Pangkat ditulis dengan ^, misalnya r^2 "
+                "atau 10^2. Akar ditulis sebagai akar(...). Tulis pi sebagai π bila terlihat.\n"
+                "- Salin satuan seperti cm, m, m^2, dm, serta tanda sama dengan.\n"
+                "- Perhatikan bentuk setiap angka. Angka 7 yang memiliki garis silang atau "
+                "garis atas dapat mirip angka 1; angka 4 dapat mirip angka 9; angka 0 dapat "
+                "mirip angka 6. Bandingkan dengan cara siswa menulis angka yang sama di "
+                "bagian lain pada foto. Jangan mengubah angka hanya karena angka itu muncul "
+                "berbeda di perhitungan.\n"
+                "- Tulisan yang dicoret jangan dimasukkan, kecuali itu satu-satunya isi "
+                "baris. Jika dimasukkan, beri tanda [dicoret].\n"
+                "- Jika bagian tulisan sama sekali tidak terbaca, tulis [?] pada posisinya. "
+                "Jangan menebak untuk mengisi bagian yang tidak terbaca.\n\n"
 
                 "PENANDA KERAGUAN\n"
-                "Untuk setiap angka atau simbol yang kamu ragukan (bentuknya bisa dibaca "
-                "lebih dari satu cara), catat di field 'ragu':\n"
-                "- 'teks': potongan yang kamu tulis di transkripsi,\n"
-                "- 'alternatif': daftar bacaan lain yang mungkin,\n"
-                "- 'lokasi': deskripsi singkat letaknya, misalnya 'baris 3, kolom kanan'.\n"
-                "Lebih baik menandai angka yang sebenarnya benar daripada melewatkan "
-                "angka yang salah baca. Angka yang kamu yakini tidak perlu ditandai.\n\n"
+                "Untuk setiap angka atau simbol yang kamu ragukan karena bentuknya dapat "
+                "dibaca lebih dari satu cara, catat di field 'ragu':\n"
+                "- 'teks': bacaan yang kamu tulis dalam transkripsi;\n"
+                "- 'alternatif': daftar bacaan lain yang mungkin;\n"
+                "- 'lokasi': letak singkat, misalnya 'baris 3, kolom kanan'.\n"
+                "Angka atau simbol yang kamu yakini tidak perlu ditandai.\n\n"
 
                 "BAGIAN YANG TIDAK DAPAT DIPASANGKAN\n"
                 "Jika ada tulisan nyata yang tidak dapat dikenali atau tidak dapat "
-                "dipasangkan dengan nomor soal, masukkan ke 'tidak_terpetakan' beserta "
-                "salinannya. Jangan mengisinya dengan teks kosong.\n\n"
+                "dipasangkan dengan nomor soal, masukkan ke 'tidak_terpetakan' sebagai "
+                "objek yang memuat lokasi dan transkripsinya. Jangan mengisinya dengan "
+                "teks kosong.\n\n"
 
                 "FORMAT KELUARAN\n"
-                "Keluarkan JSON saja, tanpa penjelasan dan tanpa blok kode:\n"
+                "Keluarkan JSON saja, tanpa penjelasan dan tanpa blok kode. "
+                "Jangan keluarkan entri jawaban kosong:\n"
                 '{"nama_siswa":"nama yang terbaca atau teks kosong",'
                 '"jawaban":[{"nomor":1,"transkripsi":"baris 1\\nbaris 2",'
                 '"ragu":[{"teks":"616","alternatif":["676"],"lokasi":"baris 4"}]}],'
-                '"tidak_terpetakan":[]}'
+                '"tidak_terpetakan":[{"lokasi":"kolom kanan","transkripsi":"tulisan yang terbaca"}]}'
             )
 
             try:
@@ -1092,8 +1177,8 @@ if kirim:
                             }
                         )
 
-                    teks_ocr = minta_openrouter(
-                        api_key,
+                    teks_ocr = minta_orvix(
+                        orvix_api_key,
                         MODEL_VISION,
                         konten_ocr,
                     )
@@ -1185,6 +1270,16 @@ if kirim:
                 st.error(f"Hasil OCR tidak dapat diproses: {error}")
                 st.stop()
 
+            # Membaca API key OpenRouter khusus untuk tahap penilaian.
+            openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+
+            if not openrouter_api_key:
+                st.error(
+                    "API key OpenRouter belum terbaca. "
+                    "Periksa secret OPENROUTER_API_KEY."
+                )
+                st.stop()
+
             # Memberi instruksi penilaian dan format jawaban kepada AI.
             # Menilai jawaban OCR satu siswa demi satu siswa.
             hasil_batch = []
@@ -1266,11 +1361,10 @@ if kirim:
 
                         # Permintaan kedua untuk siswa ini: penilaian teks.
                         teks_nilai = minta_openrouter(
-                            api_key,
+                            openrouter_api_key,
                             MODEL,
                             prompt,
                         )
-
                         awal_json = teks_nilai.find("{")
                         if awal_json == -1:
                             raise ValueError(
@@ -1393,7 +1487,62 @@ if hasil_batch:
         nama = data_siswa["nama_siswa"]
         hasil = data_siswa["hasil"]
 
-        st.markdown(f"## Siswa {urutan}: {nama}")
+        # Menampilkan nama siswa dan tombol untuk mengubahnya.
+        kolom_nama, kolom_edit = st.columns([10, 1])
+
+        with kolom_nama:
+            st.markdown(f"## Siswa {urutan}: {nama}")
+
+        kunci_mode_edit = f"edit_nama_siswa_{urutan}"
+
+        with kolom_edit:
+            if not st.session_state.get(kunci_mode_edit, False):
+                if st.button(
+                    "✏️",
+                    key=f"tombol_edit_nama_{urutan}",
+                    help="Ubah nama siswa",
+                ):
+                    st.session_state.pop(f"input_edit_nama_{urutan}", None)
+                    st.session_state[kunci_mode_edit] = True
+                    st.rerun()
+
+        # Menampilkan kolom nama dan tombol simpan setelah pensil diklik.
+        if st.session_state.get(kunci_mode_edit, False):
+            with st.form(f"form_edit_nama_{urutan}"):
+                nama_baru = st.text_input(
+                    "Nama siswa",
+                    value=nama,
+                    key=f"input_edit_nama_{urutan}",
+                )
+
+                kolom_simpan, kolom_batal = st.columns(2)
+
+                with kolom_simpan:
+                    tombol_simpan_nama = st.form_submit_button(
+                        "Simpan nama",
+                        type="primary",
+                    )
+
+                with kolom_batal:
+                    tombol_batal_nama = st.form_submit_button("Batal")
+
+                if tombol_simpan_nama:
+                    if not nama_baru.strip():
+                        st.error("Nama siswa tidak boleh kosong.")
+                    else:
+                        nama_baru = nama_baru.strip()
+
+                        # Memperbarui nama pada hasil yang sedang ditinjau
+                        # sekaligus metadata yang akan dikirim ke database.
+                        data_siswa["nama_siswa"] = nama_baru
+                        data_siswa["metadata"]["nama_siswa"] = nama_baru
+
+                        st.session_state[kunci_mode_edit] = False
+                        st.rerun()
+
+                if tombol_batal_nama:
+                    st.session_state[kunci_mode_edit] = False
+                    st.rerun()
 
         if data_siswa.get("tidak_terpetakan"):
             st.warning(

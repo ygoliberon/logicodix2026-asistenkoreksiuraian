@@ -1,0 +1,38 @@
+SAMPLE SOAL DAN KUNCI JAWABAN
+
+#SOAL 1
+
+Sebuah taman berbentuk persegi panjang seperti pada gambar. Di dalam taman tersebut dibangun sebuah kolam air berbentuk lingkaran yang posisinya menyinggung seperti pada gambar. Panjang taman adalah 25 meter. Diketahui bahwa sekeliling luar taman tersebut dipasangi pagar dengan total panjang 90 meter.
+Kolam tersebut awalnya dalam keadaan kosong dan akan diisi air. Jika pengisian air membutuhkan 2 liter untuk setiap 1 meter persegi luas permukaan kolam, tentukan banyak air minimum yang dibutuhkan untuk mengisi kolam tersebut hingga selesai! Gunakan π = 3,14.
+
+#KUNCI / ACUAN JAWABAN SOAL 1
+
+Diketahui keliling taman 90 meter dan panjangnya 25 meter. Lebar taman:
+Lebar = (90 ÷ 2) - 25 = 20 meter.
+Kolam menyinggung sisi taman bagian atas dan bawah, sehingga diameter kolam sama dengan lebar taman, yaitu 20 meter. Jari-jari kolam:
+r = 20 ÷ 2 = 10 meter.
+Luas kolam:
+L = 3,14 × 10^2 = 314 m^2.
+Kebutuhan air:
+Air = 314 × 2 = 628 liter.
+Jadi, banyak air minimum yang dibutuhkan adalah 628 liter.
+
+
+#SOAL 2
+
+Sebuah tempat penyimpanan hasil panen (silo) berbentuk kerucut seperti pada gambar terisi penuh oleh gabah. Seluruh gabah tersebut akan dipindahkan ke pabrik menggunakan sebuah truk pengangkut dengan bak truk berbentuk balok. Diameter = 14 meter dan tinggi = 12 meter. Panjang truk = 7 m, lebar truk = 2 m, dan tinggi bak truk = 2 m
+Tentukan berapa kali minimal truk tersebut harus beroperasi untuk mengangkut seluruh gabah di dalam silo hingga habis! Gunakan π = 22/7
+
+#KUNCI / ACUAN JAWABAN SOAL 2
+
+Diketahui silo berbentuk kerucut terbalik dengan jari-jari r = 7 meter dan tinggi t = 12 meter.
+Volume silo:
+V = 1/3 × π × r^2 × t
+  = 1/3 × 22/7 × 7^2 × 12
+  = 616 m³.
+Bak truk berbentuk balok dengan ukuran 7 m × 2 m × 2 m.
+Volume bak truk:
+V = 7 × 2 × 2 = 28 m³.
+Banyak operasi truk:
+616 ÷ 28 = 22 kali.
+Jadi, truk harus beroperasi minimal 22 kali.
